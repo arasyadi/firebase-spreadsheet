@@ -724,6 +724,136 @@ input::placeholder { color: var(--text-4); }
 .confirm-icon { font-size: 36px; margin-bottom: 10px; }
 .confirm-msg { font-size: 13px; color: var(--text-3); line-height: 1.6; }
 
+/* ── JSON CELL ── */
+.cell-json-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1.5px solid var(--brand);
+  border-radius: 99px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--brand);
+  background: var(--brand-light);
+  cursor: pointer;
+  transition: all var(--t-fast);
+  margin: 6px 12px;
+  white-space: nowrap;
+}
+.cell-json-btn:hover { background: var(--brand); color: #fff; }
+.cell-json-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: var(--brand-dim);
+  color: var(--brand);
+  font-family: var(--font-mono);
+}
+
+/* ── MODAL DETAIL (lebar lebih besar) ── */
+#detail-modal-overlay { z-index: 515; }
+#detail-modal-overlay .modal-box { width: 680px; }
+.detail-header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.detail-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 1px solid var(--border-light);
+}
+.detail-meta-chip.score { background: var(--success-lt); color: var(--success); border-color: #BBF7D0; }
+.detail-meta-chip.violations { background: var(--warn-lt); color: var(--warn); border-color: #FDE68A; }
+.detail-meta-chip.violations.clean { background: var(--success-lt); color: var(--success); border-color: #BBF7D0; }
+
+.detail-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-4);
+  margin-bottom: 10px;
+}
+.answer-list { display: flex; flex-direction: column; gap: 10px; }
+.answer-item {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.answer-item-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-light);
+}
+.answer-qid {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-4);
+  flex: 1;
+}
+.answer-qnum {
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--brand);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 99px;
+  flex-shrink: 0;
+}
+.answer-text {
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--text-1);
+  line-height: 1.6;
+  background: var(--surface);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.answer-text.empty { color: var(--text-4); font-style: italic; }
+
+.detail-raw-wrap {
+  margin-top: 16px;
+}
+.detail-raw-toggle {
+  font-size: 11px;
+  color: var(--text-4);
+  cursor: pointer;
+  text-decoration: underline;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--font-ui);
+}
+.detail-raw-pre {
+  display: none;
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-2);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
 /* ── SCROLLBAR ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -896,6 +1026,19 @@ input::placeholder { color: var(--text-4); }
   </div>
 </div>
 
+<!-- ── MODAL: DETAIL ROW / JAWABAN JSON ── -->
+<div class="modal-overlay" id="detail-modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">📋 <span id="detail-modal-title">Detail Baris</span></div>
+    </div>
+    <div class="modal-body" id="detail-modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn ghost" id="btn-detail-close">Tutup</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast-area"></div>
 
@@ -954,6 +1097,172 @@ function confirm2(msg, title = 'Konfirmasi', icon = '🗑') {
     $('btn-confirm-no').addEventListener('click', no, {once:true});
   });
 }
+
+/* ── DETEKSI & PARSE JSON STRING ── */
+function tryParseJson(str) {
+  if (typeof str !== 'string') return null;
+  const s = str.trim();
+  if (!(s.startsWith('{') || s.startsWith('['))) return null;
+  try { return JSON.parse(s); } catch(e) { return null; }
+}
+
+/* ── MODAL DETAIL ROW ── */
+function openDetailModal(row) {
+  const id = row._id;
+  $('detail-modal-title').textContent = `Key: ${id}`;
+  const body = $('detail-modal-body');
+  body.innerHTML = '';
+
+  // Chip meta: score, violations, timestamp
+  const metaWrap = document.createElement('div');
+  metaWrap.className = 'detail-header-meta';
+  const addChip = (label, val, cls = '') => {
+    if (val == null || val === '') return;
+    const c = document.createElement('div');
+    c.className = `detail-meta-chip ${cls}`;
+    c.textContent = `${label}: ${val}`;
+    metaWrap.appendChild(c);
+  };
+  addChip('Score', row['total_score'] != null ? row['total_score'] : null, 'score');
+  const viol = row['violations'];
+  addChip('Violations', viol != null ? viol : null, Number(viol) === 0 ? 'violations clean' : 'violations');
+  if (row['timestamp']) {
+    const d = new Date(row['timestamp']);
+    addChip('Waktu', isNaN(d.getTime()) ? row['timestamp'] : d.toLocaleString('id-ID'));
+  }
+  if (metaWrap.childElementCount) body.appendChild(metaWrap);
+
+  // Render tiap kolom
+  S.columns.forEach(col => {
+    const raw = row[col];
+    if (raw == null || raw === '') return;
+
+    // Lewati kolom yang sudah jadi meta chip
+    if (['total_score','violations','timestamp'].includes(col)) return;
+
+    const section = document.createElement('div');
+    section.style.cssText = 'margin-bottom:20px';
+
+    const secTitle = document.createElement('div');
+    secTitle.className = 'detail-section-title';
+    secTitle.textContent = col;
+    section.appendChild(secTitle);
+
+    const parsed = tryParseJson(raw);
+
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      // Periksa apakah berisi key Q-xxx langsung → daftar jawaban
+      const keys = Object.keys(parsed);
+      const isQAnswers = keys.every(k => k.startsWith('Q-'));
+
+      if (isQAnswers) {
+        renderAnswerList(section, parsed);
+      } else {
+        // Cek apakah ada field di dalamnya yang juga JSON string (double-stringify)
+        const innerKey = keys.find(k => tryParseJson(parsed[k]) !== null);
+        if (innerKey) {
+          const inner = tryParseJson(parsed[innerKey]);
+          const innerKeys = inner ? Object.keys(inner) : [];
+          if (innerKeys.every(k => k.startsWith('Q-'))) {
+            renderAnswerList(section, inner);
+          } else {
+            renderKVList(section, parsed);
+          }
+        } else {
+          renderKVList(section, parsed);
+        }
+      }
+
+      // Raw toggle
+      appendRawToggle(section, parsed);
+    } else {
+      const text = document.createElement('div');
+      text.className = 'answer-text';
+      text.textContent = String(raw);
+      section.appendChild(text);
+    }
+
+    body.appendChild(section);
+  });
+
+  if (!body.childElementCount) {
+    body.innerHTML = '<div style="color:var(--text-4);font-size:13px;text-align:center;padding:20px">Tidak ada data yang bisa ditampilkan.</div>';
+  }
+
+  $('detail-modal-overlay').classList.add('open');
+}
+
+function renderAnswerList(container, answers) {
+  const keys = Object.keys(answers);
+  const list = document.createElement('div');
+  list.className = 'answer-list';
+  keys.forEach((qid, i) => {
+    const answer = answers[qid];
+    const item = document.createElement('div');
+    item.className = 'answer-item';
+    const head = document.createElement('div');
+    head.className = 'answer-item-head';
+    const num = document.createElement('span');
+    num.className = 'answer-qnum';
+    num.textContent = `Soal ${i + 1}`;
+    const qidSpan = document.createElement('span');
+    qidSpan.className = 'answer-qid';
+    qidSpan.textContent = qid;
+    head.appendChild(num);
+    head.appendChild(qidSpan);
+    const ans = document.createElement('div');
+    const empty = answer == null || answer === '';
+    ans.className = 'answer-text' + (empty ? ' empty' : '');
+    ans.textContent = empty ? '(tidak dijawab)' : String(answer);
+    item.appendChild(head);
+    item.appendChild(ans);
+    list.appendChild(item);
+  });
+  container.appendChild(list);
+}
+
+function renderKVList(container, obj) {
+  const list = document.createElement('div');
+  list.className = 'answer-list';
+  Object.entries(obj).forEach(([k, v]) => {
+    const item = document.createElement('div');
+    item.className = 'answer-item';
+    const head = document.createElement('div');
+    head.className = 'answer-item-head';
+    const keySpan = document.createElement('span');
+    keySpan.className = 'answer-qid';
+    keySpan.textContent = k;
+    head.appendChild(keySpan);
+    const valDiv = document.createElement('div');
+    valDiv.className = 'answer-text';
+    valDiv.textContent = typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v ?? '');
+    item.appendChild(head);
+    item.appendChild(valDiv);
+    list.appendChild(item);
+  });
+  container.appendChild(list);
+}
+
+function appendRawToggle(container, data) {
+  const wrap = document.createElement('div');
+  wrap.className = 'detail-raw-wrap';
+  const btn = document.createElement('button');
+  btn.className = 'detail-raw-toggle';
+  btn.textContent = 'Lihat data mentah ▾';
+  const pre = document.createElement('pre');
+  pre.className = 'detail-raw-pre';
+  try { pre.textContent = JSON.stringify(data, null, 2); } catch(e) { pre.textContent = String(data); }
+  btn.onclick = () => {
+    const open = pre.style.display === 'block';
+    pre.style.display = open ? 'none' : 'block';
+    btn.textContent = open ? 'Lihat data mentah ▾' : 'Sembunyikan ▴';
+  };
+  wrap.appendChild(btn);
+  wrap.appendChild(pre);
+  container.appendChild(wrap);
+}
+
+$('btn-detail-close').onclick = () => $('detail-modal-overlay').classList.remove('open');
 
 function setToolbarEnabled(enabled) {
   ['btn-add-record','btn-manage-cols','btn-refresh','search-input','btn-export-csv']
@@ -1307,17 +1616,33 @@ function renderGrid() {
         inp.value = val;
         td.appendChild(inp);
       } else {
-        const span = document.createElement('span');
-        span.className = 'cell-display';
-        if (val === '' || val == null) {
-          span.classList.add('cell-null');
-          span.textContent = '—';
+        // Cek apakah nilai adalah JSON string → tampilkan tombol Lihat
+        const parsed = tryParseJson(val);
+        if (parsed && typeof parsed === 'object') {
+          const btn = document.createElement('button');
+          btn.className = 'cell-json-btn';
+          const keyCount = Object.keys(parsed).length;
+          // Deteksi apakah isinya Q-xxx (jawaban) atau generic object
+          const isAnswers = Object.keys(parsed).every(k => k.startsWith('Q-'));
+          btn.textContent = isAnswers
+            ? `📝 ${keyCount} Jawaban`
+            : `{ } ${keyCount} field`;
+          btn.title = `Klik untuk melihat detail ${col}`;
+          btn.onclick = () => openDetailModal(row);
+          td.appendChild(btn);
         } else {
-          span.textContent = val;
-          span.title = val;
+          const span = document.createElement('span');
+          span.className = 'cell-display';
+          if (val === '' || val == null) {
+            span.classList.add('cell-null');
+            span.textContent = '—';
+          } else {
+            span.textContent = val;
+            span.title = val;
+          }
+          span.ondblclick = () => { S.editingRows.add(id); renderGrid(); };
+          td.appendChild(span);
         }
-        span.ondblclick = () => { S.editingRows.add(id); renderGrid(); };
-        td.appendChild(span);
       }
       tr.appendChild(td);
     });
@@ -1551,6 +1876,7 @@ document.addEventListener('keydown', e => {
   // Escape: tutup modal / batal edit
   if (e.key === 'Escape') {
     if ($('confirm-overlay').classList.contains('open')) { $('btn-confirm-no').click(); return; }
+    if ($('detail-modal-overlay').classList.contains('open')) { $('btn-detail-close').click(); return; }
     if ($('col-modal-overlay').classList.contains('open')) { $('btn-col-modal-close').click(); return; }
     if ($('modal-overlay').classList.contains('open')) { $('btn-modal-cancel').click(); return; }
     if ($('add-row-bar').style.display !== 'none') { $('btn-cancel-new').click(); return; }
