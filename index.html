@@ -3,463 +3,1578 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Firebase RTDB Spreadsheet</title>
+<title>🔥 RTDB Spreadsheet</title>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
 <style>
-/* ─── TOKENS & BASE STYLES TETAP SAMA SEPERTI SEBELUMNYA ─── */
 :root {
-  --bg: #F2F4F7; --surface: #FFFFFF; --surface-2: #EEF1F6; --overlay: rgba(0,0,0,.45);
-  --brand: #0E6655; --brand-light: #E6F3F1; --brand-hover: #0A5244;
-  --accent: #C44B1B; --accent-lt: #FDEEE8;
-  --success: #166534; --success-lt:#DCFCE7;
-  --danger: #991B1B; --danger-lt: #FEE2E2;
-  --warn: #92400E; --warn-lt: #FEF3C7;
-  --text-1: #111827; --text-2: #374151; --text-3: #6B7280; --text-inv: #FFFFFF;
-  --border: #D1D5DB; --border-focus: #0E6655;
-  --row-hover: #F0F9F7; --row-selected: #DBEEF8; --row-odd: #F9FAFB;
-  --cell-border: #E5E7EB; --header-bg: #1A2E2A;
-  --radius: 6px; --radius-lg: 10px;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,.12); --shadow-md: 0 4px 16px rgba(0,0,0,.12); --shadow-lg: 0 8px 32px rgba(0,0,0,.16);
-  --font-ui: 'Sora', sans-serif; --font-mono: 'IBM Plex Mono', monospace;
+  --bg: #F2F4F7;
+  --surface: #FFFFFF;
+  --surface-2: #EEF1F6;
+  --surface-3: #E5E8EE;
+  --overlay-bg: rgba(0,0,0,.5);
+  --brand: #0E6655;
+  --brand-light: #E6F3F1;
+  --brand-dim: rgba(14,102,85,.12);
+  --brand-hover: #0A5244;
+  --accent: #C44B1B;
+  --accent-lt: #FDEEE8;
+  --success: #166534;
+  --success-lt: #DCFCE7;
+  --danger: #991B1B;
+  --danger-lt: #FEE2E2;
+  --warn: #92400E;
+  --warn-lt: #FEF3C7;
+  --text-1: #111827;
+  --text-2: #374151;
+  --text-3: #6B7280;
+  --text-4: #9CA3AF;
+  --text-inv: #FFFFFF;
+  --border: #D1D5DB;
+  --border-light: #E5E7EB;
+  --border-focus: #0E6655;
+  --row-hover: #F0F9F7;
+  --row-odd: #FAFAFA;
+  --row-selected: #DBEEF8;
+  --cell-border: #E9EAEC;
+  --header-bg: #1A2E2A;
+  --header-bg-2: #243b35;
+  --radius: 6px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --shadow-xs: 0 1px 2px rgba(0,0,0,.08);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,.1);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.12);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,.16);
+  --font-ui: 'Sora', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
   --t: 160ms ease;
+  --t-fast: 100ms ease;
+  --sidebar-w: 272px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { height: 100%; }
-body { font-family: var(--font-ui); background: var(--bg); color: var(--text-1); min-height: 100%; display: flex; flex-direction: column; font-size: 14px; line-height: 1.5; }
-:focus-visible { outline: 3px solid var(--border-focus); outline-offset: 2px; border-radius: var(--radius); }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text-1);
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  line-height: 1.5;
+}
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+::selection { background: var(--brand-dim); }
+code { font-family: var(--font-mono); font-size: .9em; color: var(--brand); }
 
-/* ─── UI COMPONENTS ─── */
-#topbar { display: flex; align-items: center; gap: 12px; padding: 0 20px; height: 52px; background: var(--header-bg); color: var(--text-inv); box-shadow: var(--shadow-md); position: sticky; top: 0; z-index: 100; flex-shrink: 0; }
-#topbar .logo { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px; color: #fff; }
-#topbar .sep { width: 1px; height: 24px; background: rgba(255,255,255,.2); }
-#topbar .spacer { flex: 1; }
+/* ── TOPBAR ── */
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  height: 50px;
+  background: var(--header-bg);
+  color: var(--text-inv);
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  position: relative;
+  z-index: 100;
+  flex-shrink: 0;
+}
+.logo {
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -.01em;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #fff;
+  white-space: nowrap;
+}
+.logo-icon { font-size: 18px; }
+.sep { width: 1px; height: 22px; background: rgba(255,255,255,.18); flex-shrink: 0; }
+.spacer { flex: 1; }
 
-.tb-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: none; border-radius: var(--radius); font-family: var(--font-ui); font-size: 13px; font-weight: 500; cursor: pointer; transition: background var(--t), transform var(--t); color: #fff; background: rgba(255,255,255,.12); }
-.tb-btn:hover { background: rgba(255,255,255,.22); }
-.tb-btn.primary { background: var(--brand); } .tb-btn.primary:hover { background: var(--brand-hover); }
-.tb-btn.light { background: var(--surface); color: var(--text-1); } .tb-btn.light:hover { background: var(--surface-2); }
-.tb-btn:disabled { opacity: .45; cursor: not-allowed; }
+#status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: rgba(255,255,255,.1);
+  color: rgba(255,255,255,.85);
+  border: 1px solid rgba(255,255,255,.12);
+  font-family: var(--font-mono);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #6B7280;
+  transition: background .3s;
+  flex-shrink: 0;
+}
+#status-dot.connected { background: #4ADE80; box-shadow: 0 0 6px #4ADE80; }
+#status-dot.error { background: #F87171; }
+#status-dot.loading { background: #FBBF24; animation: pulse-dot 1s infinite; }
+@keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:.4; } }
 
-#status-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 99px; background: rgba(255,255,255,.12); color: #fff; }
-#status-dot { width: 8px; height: 8px; border-radius: 50%; background: #6B7280; transition: background var(--t); }
-#status-dot.connected { background: #4ADE80; } #status-dot.error { background: #F87171; }
+.tb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: var(--radius);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--t), border-color var(--t);
+  color: rgba(255,255,255,.9);
+  background: rgba(255,255,255,.08);
+  white-space: nowrap;
+}
+.tb-btn:hover { background: rgba(255,255,255,.18); border-color: rgba(255,255,255,.25); }
+.tb-btn:disabled { opacity: .35; cursor: not-allowed; pointer-events: none; }
+.tb-btn.primary { background: var(--brand); border-color: var(--brand-hover); }
+.tb-btn.primary:hover { background: var(--brand-hover); }
 
-#layout { display: flex; flex: 1; min-height: 0; overflow: hidden; }
-#sidebar { width: 280px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; transition: width var(--t); }
-.sidebar-section { padding: 16px; border-bottom: 1px solid var(--border); }
-.sidebar-section:last-child { border-bottom: none; flex: 1; overflow-y: auto; }
-.sidebar-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); margin-bottom: 12px; }
+/* ── LAYOUT ── */
+#layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
 
+/* ── SIDEBAR ── */
+#sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border-light);
+}
+.sidebar-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--text-4);
+  margin-bottom: 10px;
+}
+.sidebar-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+.sidebar-input-row input { flex: 1; }
+.sidebar-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 8px;
+}
+.sidebar-empty {
+  text-align: center;
+  padding: 24px 12px;
+  color: var(--text-4);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.sidebar-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-light);
+  font-size: 10.5px;
+  color: var(--text-4);
+  line-height: 1.5;
+}
+.sidebar-footer code { font-size: .85em; }
+
+/* Path list item */
+.path-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--t-fast);
+  font-size: 12.5px;
+  font-family: var(--font-mono);
+  color: var(--text-2);
+  position: relative;
+  user-select: none;
+}
+.path-item:hover { background: var(--surface-2); }
+.path-item.active {
+  background: var(--brand-light);
+  color: var(--brand);
+  font-weight: 600;
+}
+.path-item .path-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.path-item .pi-prefix { color: var(--text-4); font-size: 10px; }
+.path-del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-4);
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 3px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity var(--t-fast), color var(--t-fast), background var(--t-fast);
+  flex-shrink: 0;
+}
+.path-item:hover .path-del { opacity: 1; }
+.path-del:hover { color: var(--danger); background: var(--danger-lt); }
+
+/* ── FORM ELEMENTS ── */
 label { display: block; font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
-input[type="text"], input[type="password"], textarea, select { width: 100%; padding: 7px 10px; border: 1.5px solid var(--border); border-radius: var(--radius); font-family: var(--font-mono); font-size: 12px; color: var(--text-1); background: var(--surface); transition: border-color var(--t); }
-input:focus, textarea:focus { border-color: var(--border-focus); outline: none; box-shadow: 0 0 0 3px rgba(14,102,85,.15); }
-.form-row { margin-bottom: 10px; }
+input[type="text"],
+input[type="password"],
+input[type="search"],
+textarea,
+select {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-1);
+  background: var(--surface);
+  transition: border-color var(--t), box-shadow var(--t);
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--border-focus);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(14,102,85,.12);
+}
+input[type="search"] { background: var(--surface-2); }
+input::placeholder { color: var(--text-4); }
 
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 14px; border: none; border-radius: var(--radius); font-family: var(--font-ui); font-size: 13px; font-weight: 600; cursor: pointer; transition: all var(--t); width: 100%; }
-.btn.primary { background: var(--brand); color: #fff; } .btn.primary:hover { background: var(--brand-hover); }
-.btn.outline { background: transparent; color: var(--brand); border: 1.5px solid var(--brand); } .btn.outline:hover { background: var(--brand-light); }
-.btn.sm { padding: 5px 10px; font-size: 12px; width: auto; }
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t);
+  white-space: nowrap;
+}
+.btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+.btn.primary { background: var(--brand); color: #fff; }
+.btn.primary:hover { background: var(--brand-hover); }
+.btn.outline {
+  background: transparent;
+  color: var(--brand);
+  border: 1.5px solid var(--brand);
+}
+.btn.outline:hover { background: var(--brand-light); }
+.btn.danger { background: var(--danger); color: #fff; }
+.btn.danger:hover { background: #7F1D1D; }
+.btn.ghost { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+.btn.ghost:hover { background: var(--surface-3); }
+.btn.sm { padding: 5px 10px; font-size: 12px; }
+.btn.xs { padding: 3px 8px; font-size: 11px; border-radius: 4px; }
 
-.coll-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--radius); cursor: pointer; transition: background var(--t); font-size: 13px; font-family: var(--font-mono); color: var(--text-2); }
-.coll-item:hover { background: var(--surface-2); } .coll-item.active { background: var(--brand-light); color: var(--brand); font-weight: 600; }
-.coll-item .del-coll { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--text-3); display: none; }
-.coll-item:hover .del-coll { display: block; } .coll-item .del-coll:hover { color: var(--danger); }
-
+/* ── MAIN AREA ── */
 #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
-#toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
-#toolbar .coll-label { font-weight: 700; font-size: 15px; color: var(--text-1); font-family: var(--font-mono); }
-#search-input { width: 200px; padding: 6px 10px; border: 1.5px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
 
-#grid-wrap { flex: 1; overflow: auto; position: relative; }
-#sheet { width: max-content; min-width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 13px; }
-#sheet thead th { position: sticky; top: 0; z-index: 10; background: var(--header-bg); color: #fff; font-family: var(--font-ui); font-size: 11px; padding: 10px 12px; text-align: left; }
-#sheet tbody tr { border-bottom: 1px solid var(--cell-border); } #sheet tbody tr:nth-child(odd) { background: var(--row-odd); } #sheet tbody tr:hover { background: var(--row-hover); }
-#sheet tbody td { padding: 0; border-right: 1px solid var(--cell-border); max-width: 300px; }
-#sheet tbody td.actions-cell { text-align: center; padding: 4px 6px; background: var(--surface); border-left: 2px solid var(--border); position: sticky; right: 0; }
+/* ── TOOLBAR ── */
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.active-path-label {
+  font-weight: 700;
+  font-size: 13.5px;
+  font-family: var(--font-mono);
+  color: var(--brand);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.count-pill {
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--brand-light);
+  color: var(--brand);
+  padding: 2px 9px;
+  border-radius: 99px;
+  flex-shrink: 0;
+}
+#toolbar .sep-v {
+  width: 1px; height: 20px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+#search-input {
+  width: 180px;
+  padding: 5px 10px;
+  font-size: 12.5px;
+}
+.realtime-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-3);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  transition: background var(--t);
+  user-select: none;
+  flex-shrink: 0;
+}
+.realtime-label:hover { background: var(--surface-3); }
+.realtime-label input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  border: none;
+  accent-color: var(--brand);
+  cursor: pointer;
+}
+.realtime-label.on {
+  background: var(--brand-light);
+  border-color: var(--brand);
+  color: var(--brand);
+  font-weight: 600;
+}
 
-.cell-display { padding: 8px 12px; min-height: 36px; cursor: cell; white-space: pre; overflow: hidden; text-overflow: ellipsis; display: block; }
-.cell-input { width: 100%; min-width: 120px; padding: 7px 11px; border: none; background: #FFFDE7; box-shadow: 0 0 0 2px var(--brand) inset; outline: none; }
+/* ── STATE PANEL ── */
+#state-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px 24px;
+  color: var(--text-3);
+  text-align: center;
+}
+.state-icon { font-size: 42px; line-height: 1; }
+.state-title { font-size: 17px; font-weight: 700; color: var(--text-2); }
+.state-sub { font-size: 13px; max-width: 320px; line-height: 1.6; }
+.state-spin { display: inline-block; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-.row-save, .row-cancel, .row-delete, .row-edit { padding: 4px 8px; border: none; border-radius: 4px; font-family: var(--font-ui); font-size: 11px; font-weight: 600; cursor: pointer; }
-.row-save { background: var(--success); color: #fff; } .row-delete { background: var(--danger-lt); color: var(--danger); } .row-edit { background: var(--brand-light); color: var(--brand); } .row-cancel { background: var(--surface-2); }
+/* ── GRID ── */
+#grid-wrap {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  display: none;
+}
+#sheet {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+#sheet thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--header-bg);
+  color: rgba(255,255,255,.9);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  padding: 9px 12px;
+  text-align: left;
+  white-space: nowrap;
+  border-right: 1px solid rgba(255,255,255,.08);
+}
+#sheet thead th.th-num { width: 44px; text-align: center; }
+#sheet thead th.th-id { min-width: 120px; }
+#sheet thead th.th-actions { text-align: center; min-width: 90px; border-right: none; position: sticky; right: 0; background: var(--header-bg-2); z-index: 20; border-left: 2px solid rgba(255,255,255,.1); }
 
-#add-row-bar { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--surface); border-top: 2px solid var(--border); flex-shrink: 0; }
-#state-panel { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 40px; color: var(--text-3); text-align: center; }
+.th-col-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.th-col-del {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.3);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 1px 3px;
+  border-radius: 3px;
+  line-height: 1;
+  transition: color var(--t-fast), background var(--t-fast);
+}
+.th-col-del:hover { color: #F87171; background: rgba(248,113,113,.15); }
 
-#toast-area { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column-reverse; gap: 8px; pointer-events: none; }
-.toast { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); font-size: 13px; color: #fff; pointer-events: auto; animation: toast-in .25s ease forwards; }
-.toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--brand); } .toast.warning { background: var(--warn); }
-@keyframes toast-in { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
+#sheet tbody tr {
+  border-bottom: 1px solid var(--cell-border);
+  transition: background var(--t-fast);
+}
+#sheet tbody tr:nth-child(odd) { background: var(--row-odd); }
+#sheet tbody tr:hover { background: var(--row-hover); }
+#sheet tbody tr.editing { background: #FFFDE7; }
 
-#modal-overlay, #confirm-overlay { position: fixed; inset: 0; background: var(--overlay); z-index: 500; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
-#modal-box, #confirm-box { background: var(--surface); border-radius: var(--radius-lg); padding: 28px; width: 480px; max-width: 95vw; max-height: 90vh; overflow-y: auto; }
-.modal-title { font-size: 17px; font-weight: 700; color: var(--text-1); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-.modal-actions { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; }
+#sheet tbody td {
+  padding: 0;
+  border-right: 1px solid var(--cell-border);
+  max-width: 280px;
+  vertical-align: middle;
+}
+#sheet tbody td.td-num {
+  text-align: center;
+  color: var(--text-4);
+  font-size: 11px;
+  padding: 0 4px;
+  width: 44px;
+}
+#sheet tbody td.td-id {
+  min-width: 120px;
+}
+#sheet tbody td.td-actions {
+  text-align: center;
+  padding: 4px 8px;
+  background: var(--surface);
+  border-left: 2px solid var(--border);
+  position: sticky;
+  right: 0;
+  z-index: 5;
+  min-width: 90px;
+  white-space: nowrap;
+}
+#sheet tbody tr:hover td.td-actions { background: #F0F9F7; }
+#sheet tbody tr.editing td.td-actions { background: #FFFDE7; }
+
+.cell-display {
+  padding: 7px 12px;
+  min-height: 34px;
+  cursor: cell;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  color: var(--text-1);
+}
+.cell-display.id-cell {
+  color: var(--text-3);
+  font-size: 11.5px;
+  cursor: default;
+}
+.cell-display:hover:not(.id-cell) {
+  background: rgba(14,102,85,.04);
+}
+.cell-input {
+  width: 100%;
+  min-width: 120px;
+  padding: 7px 12px;
+  border: none;
+  background: #FFFDE7;
+  box-shadow: 0 0 0 2px var(--brand) inset;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  display: block;
+}
+.cell-null { color: var(--text-4); font-style: italic; }
+
+.row-btn {
+  padding: 3px 8px;
+  border: none;
+  border-radius: 4px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
+.row-save { background: var(--success); color: #fff; }
+.row-save:hover { background: #14532D; }
+.row-cancel { background: var(--surface-3); color: var(--text-2); }
+.row-cancel:hover { background: var(--border); }
+.row-delete { background: var(--danger-lt); color: var(--danger); }
+.row-delete:hover { background: var(--danger); color: #fff; }
+.row-edit { background: var(--brand-light); color: var(--brand); }
+.row-edit:hover { background: var(--brand); color: #fff; }
+.row-btns { display: flex; gap: 4px; justify-content: center; }
+
+/* ── ADD ROW BAR ── */
+#add-row-bar {
+  display: none;
+  flex-direction: column;
+  background: var(--surface);
+  border-top: 2px solid var(--brand);
+  flex-shrink: 0;
+  max-height: 220px;
+}
+#add-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border-light);
+  background: var(--brand-light);
+}
+#add-row-header span { font-size: 12.5px; font-weight: 700; color: var(--brand); }
+#add-row-header .add-row-actions { display: flex; gap: 6px; }
+#add-row-fields-wrap {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 14px;
+}
+#new-row-fields {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.nr-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 130px;
+  max-width: 200px;
+}
+.nr-field label { font-size: 10.5px; margin-bottom: 3px; color: var(--text-3); }
+.nr-field input { font-size: 12px; padding: 6px 8px; }
+
+/* ── TOAST ── */
+#toast-area {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  pointer-events: none;
+  max-width: 320px;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 15px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  font-size: 13px;
+  color: #fff;
+  pointer-events: auto;
+  animation: toast-in .2s ease forwards;
+  transition: opacity .25s;
+  word-break: break-word;
+}
+.toast.success { background: var(--success); }
+.toast.error { background: var(--danger); }
+.toast.info { background: var(--brand); }
+.toast.warning { background: #B45309; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── MODALS ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay-bg);
+  z-index: 500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  padding: 16px;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--surface);
+  border-radius: var(--radius-xl);
+  width: 460px;
+  max-width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  animation: modal-in .2s ease;
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+.modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.modal-body { padding: 20px 24px; }
+.modal-footer {
+  padding: 14px 24px;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.form-row { margin-bottom: 14px; }
+.form-row:last-child { margin-bottom: 0; }
+.form-hint { font-size: 11px; color: var(--text-4); margin-top: 4px; line-height: 1.5; }
+
+/* ── COL MANAGEMENT MODAL ── */
+#col-modal-overlay { z-index: 510; }
+.col-chip-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius);
+  min-height: 44px;
+  background: var(--surface-2);
+}
+.col-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-2);
+}
+.col-chip button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-4);
+  font-size: 12px;
+  line-height: 1;
+  padding: 0;
+  transition: color var(--t-fast);
+}
+.col-chip button:hover { color: var(--danger); }
+.col-chip-empty {
+  color: var(--text-4);
+  font-size: 12px;
+  font-style: italic;
+  padding: 4px 0;
+}
+.col-add-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+.col-add-row input { flex: 1; }
+
+/* ── CONFIRM MODAL ── */
+#confirm-overlay { z-index: 520; }
+#confirm-overlay .modal-box { width: 340px; text-align: center; }
+.confirm-icon { font-size: 36px; margin-bottom: 10px; }
+.confirm-msg { font-size: 13px; color: var(--text-3); line-height: 1.6; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-4); }
 </style>
 </head>
 <body>
 
+<!-- TOPBAR -->
 <header id="topbar">
-  <div class="logo">🔥 RTDB Spreadsheet</div>
+  <div class="logo">
+    <span class="logo-icon">🔥</span>
+    RTDB Spreadsheet
+  </div>
   <div class="sep"></div>
-  <div id="status-badge"><div id="status-dot"></div><span id="status-text">Belum terhubung</span></div>
+  <div id="status-badge">
+    <div id="status-dot"></div>
+    <span id="status-text">Belum terhubung</span>
+  </div>
   <div class="spacer"></div>
-  <button class="tb-btn" id="btn-config">Konfigurasi</button>
-  <button class="tb-btn light" id="btn-export-csv" disabled>Ekspor CSV</button>
+  <button class="tb-btn" id="btn-config">⚙ Konfigurasi</button>
+  <button class="tb-btn" id="btn-export-csv" disabled>↓ Ekspor CSV</button>
 </header>
 
+<!-- LAYOUT -->
 <div id="layout">
+
+  <!-- SIDEBAR -->
   <nav id="sidebar">
-    <div class="sidebar-section">
+    <div class="sidebar-header">
       <div class="sidebar-title">Path / Node Target</div>
-      <div class="form-row">
-        <label for="new-coll-input">Path RTDB</label>
-        <input type="text" id="new-coll-input" placeholder="cth: aqualearn/users" title="Masukkan lokasi node di JSON" />
+      <div class="sidebar-input-row">
+        <input type="text" id="new-coll-input" placeholder="aqualearn/users" />
+        <button class="btn primary sm" id="btn-add-coll" style="white-space:nowrap;flex-shrink:0">Muat</button>
       </div>
-      <button class="btn primary sm" id="btn-add-coll" style="width:100%">Muat Path Ini</button>
-      <p style="font-size:10px; color:var(--text-3); margin-top:8px;">Tips: Karena RTDB berbentuk tree bersarang, masukkan path spesifik yang berisi kumpulan data (contoh: <code>aqualearn/courses</code>).</p>
     </div>
-    <div class="sidebar-section" id="coll-list-wrap">
-      <div class="sidebar-title">Riwayat Path</div>
+    <div class="sidebar-body" id="coll-list-wrap">
+      <div class="sidebar-title" style="padding:0 4px">Riwayat Path</div>
       <div id="coll-list"></div>
+      <div id="coll-list-empty" class="sidebar-empty" style="display:none">
+        Belum ada path yang dimuat.<br>Masukkan path di atas.
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      Masukkan path spesifik yang berisi kumpulan data, contoh:<br>
+      <code>aqualearn/courses</code>
     </div>
   </nav>
 
+  <!-- MAIN -->
   <main id="main">
+
+    <!-- TOOLBAR -->
     <div id="toolbar">
-      <span class="coll-label" id="active-coll-name">—</span>
-      <span class="count-badge" id="record-count" style="font-size:11px; font-weight:bold; background:var(--brand-light); color:var(--brand); padding:2px 8px; border-radius:99px; margin-left:8px;">0 baris</span>
+      <span class="active-path-label" id="active-coll-name">—</span>
+      <span class="count-pill" id="record-count" style="display:none">0 baris</span>
+      <div class="sep-v"></div>
       <div class="spacer"></div>
-      <input type="search" id="search-input" placeholder="🔍 Cari…" disabled />
-      <button class="btn primary sm" id="btn-add-record" disabled style="width:auto">Tambah Baris</button>
-      <button class="btn outline sm" id="btn-manage-cols" disabled style="width:auto">Kolom</button>
-      <button class="btn outline sm" id="btn-refresh" disabled style="width:auto">Refresh</button>
-      <label style="display:flex;align-items:center;gap:6px;margin:0;font-size:12px;color:var(--text-2)">
-        <input type="checkbox" id="realtime-toggle" style="width:auto;accent-color:var(--brand)" /> Realtime
+      <input type="search" id="search-input" placeholder="🔍 Cari…" disabled style="width:170px" />
+      <div class="sep-v"></div>
+      <button class="btn primary sm" id="btn-add-record" disabled style="white-space:nowrap">+ Tambah Baris</button>
+      <button class="btn ghost sm" id="btn-manage-cols" disabled style="white-space:nowrap">☰ Kolom</button>
+      <button class="btn ghost sm" id="btn-refresh" disabled style="white-space:nowrap">↺ Refresh</button>
+      <label class="realtime-label" id="realtime-wrap" for="realtime-toggle">
+        <input type="checkbox" id="realtime-toggle" />
+        Realtime
       </label>
     </div>
 
+    <!-- STATE PANEL -->
     <div id="state-panel">
-      <div style="font-size:40px">🔥</div>
-      <div style="font-size:18px; font-weight:bold">Siap Terhubung</div>
-      <div style="font-size:14px">Klik Konfigurasi untuk memasukkan detail Firebase Anda.</div>
+      <div class="state-icon">🔥</div>
+      <div class="state-title">Siap Terhubung</div>
+      <div class="state-sub">Klik <strong>Konfigurasi</strong> untuk memasukkan detail Firebase Anda, atau muat path di sidebar.</div>
     </div>
 
-    <div id="grid-wrap" style="display:none">
+    <!-- GRID -->
+    <div id="grid-wrap">
       <table id="sheet">
         <thead><tr id="sheet-head"></tr></thead>
         <tbody id="sheet-body"></tbody>
       </table>
     </div>
 
-    <div id="add-row-bar" style="display:none">
-      <span style="font-size:12px;font-weight:600;color:var(--text-2)">Baris Baru:</span>
-      <div id="new-row-fields" style="display:flex;gap:6px;flex-wrap:wrap;flex:1"></div>
-      <button class="btn primary sm" id="btn-save-new">Simpan</button>
-      <button class="btn outline sm" id="btn-cancel-new">Batal</button>
+    <!-- ADD ROW BAR -->
+    <div id="add-row-bar">
+      <div id="add-row-header">
+        <span>✦ Tambah Baris Baru</span>
+        <div class="add-row-actions">
+          <button class="btn primary sm" id="btn-save-new">Simpan</button>
+          <button class="btn ghost sm" id="btn-cancel-new">Batal</button>
+        </div>
+      </div>
+      <div id="add-row-fields-wrap">
+        <div id="new-row-fields"></div>
+      </div>
     </div>
+
   </main>
-</div>
+</div><!-- /layout -->
 
-<div id="modal-overlay">
-  <div id="modal-box">
-    <div class="modal-title">Konfigurasi Firebase RTDB</div>
-    <div class="form-row">
-      <label for="cfg-apiKey">API Key</label>
-      <input type="password" id="cfg-apiKey" placeholder="AIza..." />
+<!-- ── MODAL: KONFIGURASI ── -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">🔥 Konfigurasi Firebase RTDB</div>
     </div>
-    <div class="form-row">
-      <label for="cfg-databaseURL">Database URL (Wajib untuk RTDB)</label>
-      <input type="text" id="cfg-databaseURL" placeholder="https://PROJECT_ID-default-rtdb.firebaseio.com" />
+    <div class="modal-body">
+      <div class="form-row">
+        <label for="cfg-apiKey">API Key</label>
+        <input type="password" id="cfg-apiKey" placeholder="AIzaSy…" autocomplete="off" />
+      </div>
+      <div class="form-row">
+        <label for="cfg-databaseURL">Database URL <span style="color:var(--danger)">*</span></label>
+        <input type="text" id="cfg-databaseURL" placeholder="https://PROJECT_ID-default-rtdb.firebaseio.com" />
+        <div class="form-hint">Diperlukan untuk Firebase Realtime Database.</div>
+      </div>
+      <div class="form-row">
+        <label for="cfg-projectId">Project ID</label>
+        <input type="text" id="cfg-projectId" placeholder="my-project-id" />
+      </div>
     </div>
-    <div class="form-row">
-      <label for="cfg-projectId">Project ID</label>
-      <input type="text" id="cfg-projectId" placeholder="my-project-id" />
-    </div>
-    <div class="modal-actions">
-      <button class="btn outline" id="btn-modal-cancel" style="width:auto">Batal</button>
-      <button class="btn primary" id="btn-modal-save" style="width:auto">Hubungkan</button>
+    <div class="modal-footer">
+      <button class="btn ghost" id="btn-modal-cancel">Batal</button>
+      <button class="btn primary" id="btn-modal-save">Hubungkan →</button>
     </div>
   </div>
 </div>
 
-<div id="col-modal-overlay"><div id="col-modal-box">
-  <div class="modal-title">Kelola Kolom</div>
-  <div id="col-chips" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:15px; padding:10px; border:1px dashed #ccc"></div>
-  <div style="display:flex; gap:8px;">
-    <input type="text" id="new-col-input" placeholder="Nama kolom baru..." style="flex:1" />
-    <button class="btn primary sm" id="btn-add-col" style="width:auto">Tambah</button>
-  </div>
-  <div class="modal-actions"><button class="btn outline" id="btn-col-modal-close" style="width:auto">Tutup</button></div>
-</div></div>
-
-<div id="confirm-overlay">
-  <div id="confirm-box" style="text-align:center; width:320px;">
-    <h3 id="confirm-title" style="margin-bottom:10px">Konfirmasi</h3>
-    <p id="confirm-msg" style="margin-bottom:20px; font-size:13px">Yakin?</p>
-    <div style="display:flex; gap:10px; justify-content:center">
-      <button class="btn outline" id="btn-confirm-no">Batal</button>
-      <button class="btn primary" id="btn-confirm-yes" style="background:var(--danger)">Hapus</button>
+<!-- ── MODAL: KELOLA KOLOM ── -->
+<div class="modal-overlay" id="col-modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">☰ Kelola Kolom Tampilan</div>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label>Kolom Aktif</label>
+        <div class="col-chip-wrap" id="col-chips"></div>
+        <div class="form-hint">Klik ✕ untuk menyembunyikan kolom dari tampilan (data di Firebase tidak dihapus).</div>
+      </div>
+      <div class="form-row">
+        <label>Tambah Kolom Baru</label>
+        <div class="col-add-row">
+          <input type="text" id="new-col-input" placeholder="Nama kolom baru…" />
+          <button class="btn primary sm" id="btn-add-col" style="flex-shrink:0">Tambah</button>
+        </div>
+        <div class="form-hint">Kolom baru akan muncul di tabel. Data diisi saat mengedit baris.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" id="btn-col-modal-close">Tutup</button>
     </div>
   </div>
 </div>
 
+<!-- ── MODAL: KONFIRMASI ── -->
+<div class="modal-overlay" id="confirm-overlay">
+  <div class="modal-box" style="width:320px; text-align:center">
+    <div class="modal-body" style="padding-top:28px; padding-bottom:8px">
+      <div class="confirm-icon" id="confirm-icon">🗑</div>
+      <div class="modal-title" style="justify-content:center; margin-bottom:8px" id="confirm-title">Konfirmasi</div>
+      <div class="confirm-msg" id="confirm-msg">Yakin?</div>
+    </div>
+    <div class="modal-footer" style="justify-content:center; gap:12px; padding-top:16px">
+      <button class="btn ghost" id="btn-confirm-no">Batal</button>
+      <button class="btn danger" id="btn-confirm-yes">Ya, Hapus</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
 <div id="toast-area"></div>
 
 <script>
+/* ══════════════════════════════════════════
+   STATE
+══════════════════════════════════════════ */
 const S = {
-  db: null, config: null, collections: [], activeCollection: null,
-  columns: [], data: [], filteredData: [], editingRows: new Set(),
-  unsubscribe: null, addingRow: false, newRowData: {},
+  db: null,
+  config: null,
+  collections: [],
+  activeCollection: null,
+  columns: [],
+  data: [],
+  filteredData: [],
+  editingRows: new Set(),
+  rtdbListener: null,    // callback ref untuk .off()
+  addingRow: false,
 };
 
+/* ══════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════ */
 const $ = id => document.getElementById(id);
-const toast = (msg, type='info', dur=3500) => {
-  const el = document.createElement('div'); el.className = `toast ${type}`;
-  el.innerHTML = `<span>${msg}</span>`; $('toast-area').appendChild(el);
-  setTimeout(() => { el.style.opacity = 0; setTimeout(()=>el.remove(), 250); }, dur);
-};
+const esc = str => String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-const confirm2 = (msg, title='Konfirmasi') => new Promise(resolve => {
-  $('confirm-title').textContent = title; $('confirm-msg').textContent = msg;
-  $('confirm-overlay').style.display = 'flex';
-  const yes = () => { cleanup(); resolve(true); }; const no = () => { cleanup(); resolve(false); };
-  const cleanup = () => { $('confirm-overlay').style.display = 'none'; $('btn-confirm-yes').removeEventListener('click', yes); $('btn-confirm-no').removeEventListener('click', no); };
-  $('btn-confirm-yes').addEventListener('click', yes, {once:true}); $('btn-confirm-no').addEventListener('click', no, {once:true});
-});
+function toast(msg, type = 'info', dur = 3500) {
+  const icons = { success:'✓', error:'✕', info:'ℹ', warning:'⚠' };
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${icons[type] || ''}</span><span>${esc(msg)}</span>`;
+  $('toast-area').appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(20px)';
+    setTimeout(() => el.remove(), 300);
+  }, dur);
+}
 
-/* FIREBASE INIT */
+function confirm2(msg, title = 'Konfirmasi', icon = '🗑') {
+  return new Promise(resolve => {
+    $('confirm-title').textContent = title;
+    $('confirm-msg').textContent = msg;
+    $('confirm-icon').textContent = icon;
+    $('confirm-overlay').classList.add('open');
+
+    const done = (val) => {
+      $('confirm-overlay').classList.remove('open');
+      $('btn-confirm-yes').removeEventListener('click', yes, {once:true});
+      $('btn-confirm-no').removeEventListener('click', no, {once:true});
+      resolve(val);
+    };
+    const yes = () => done(true);
+    const no  = () => done(false);
+    $('btn-confirm-yes').addEventListener('click', yes, {once:true});
+    $('btn-confirm-no').addEventListener('click', no, {once:true});
+  });
+}
+
+function setToolbarEnabled(enabled) {
+  ['btn-add-record','btn-manage-cols','btn-refresh','search-input','btn-export-csv']
+    .forEach(id => $(id).disabled = !enabled);
+}
+
+function setStatus(state, label) {
+  $('status-dot').className = state;
+  $('status-text').textContent = label;
+}
+
+/* ══════════════════════════════════════════
+   FIREBASE INIT
+══════════════════════════════════════════ */
 function initFirebase(cfg) {
+  setStatus('loading', 'Menghubungkan…');
   try {
-    if (firebase.apps.length) firebase.apps[0].delete().then(() => _doInit(cfg));
-    else _doInit(cfg);
-  } catch(e) { toast(`Error: ${e.message}`, 'error'); }
-}
-function _doInit(cfg) {
-  firebase.initializeApp(cfg);
-  S.db = firebase.database(); // MENGGUNAKAN REALTIME DATABASE
-  S.config = cfg; localStorage.setItem('rtdb_cfg', JSON.stringify(cfg));
-  $('status-dot').className = 'connected'; $('status-text').textContent = cfg.projectId;
-  toast('Terhubung ke RTDB!', 'success');
-  ['btn-add-record','btn-manage-cols','btn-refresh','search-input','btn-export-csv'].forEach(id => $(id).disabled = false);
-  if (S.activeCollection) loadCollection(S.activeCollection);
+    const doInit = () => {
+      firebase.initializeApp(cfg);
+      S.db = firebase.database();
+      S.config = cfg;
+      localStorage.setItem('rtdb_cfg', JSON.stringify(cfg));
+      setStatus('connected', cfg.projectId || 'Terhubung');
+      toast('Berhasil terhubung ke RTDB!', 'success');
+      setToolbarEnabled(true);
+      if (S.activeCollection) loadCollection(S.activeCollection);
+    };
+    if (firebase.apps.length) {
+      firebase.apps[0].delete().then(doInit).catch(doInit);
+    } else {
+      doInit();
+    }
+  } catch(e) {
+    setStatus('error', 'Error');
+    toast(`Gagal: ${e.message}`, 'error');
+  }
 }
 
-/* PATH / COLLECTIONS */
+/* ══════════════════════════════════════════
+   PATH / COLLECTIONS
+══════════════════════════════════════════ */
 function renderPaths() {
-  const list = $('coll-list'); list.innerHTML = '';
+  const list = $('coll-list');
+  list.innerHTML = '';
+  const empty = $('coll-list-empty');
+
+  if (!S.collections.length) {
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+
   S.collections.forEach(c => {
     const div = document.createElement('div');
-    div.className = 'coll-item' + (S.activeCollection === c ? ' active' : '');
-    div.innerHTML = `<span>/${c}</span><button class="del-coll">✕</button>`;
-    div.onclick = (e) => { if(!e.target.classList.contains('del-coll')) { S.activeCollection = c; loadCollection(c); renderPaths(); } };
-    div.querySelector('.del-coll').onclick = () => { S.collections = S.collections.filter(x=>x!==c); localStorage.setItem('rtdb_paths', JSON.stringify(S.collections)); renderPaths(); };
+    div.className = 'path-item' + (S.activeCollection === c ? ' active' : '');
+
+    const label = document.createElement('span');
+    label.className = 'path-label';
+    const prefix = document.createElement('span');
+    prefix.className = 'pi-prefix';
+    prefix.textContent = '/';
+    label.appendChild(prefix);
+    label.appendChild(document.createTextNode(c));
+
+    const del = document.createElement('button');
+    del.className = 'path-del';
+    del.title = 'Hapus dari riwayat';
+    del.textContent = '✕';
+    del.onclick = (e) => {
+      e.stopPropagation();
+      S.collections = S.collections.filter(x => x !== c);
+      localStorage.setItem('rtdb_paths', JSON.stringify(S.collections));
+      if (S.activeCollection === c) {
+        S.activeCollection = null;
+        showStatePanel('idle');
+        $('active-coll-name').textContent = '—';
+        $('record-count').style.display = 'none';
+      }
+      renderPaths();
+    };
+
+    div.appendChild(label);
+    div.appendChild(del);
+    div.onclick = () => {
+      S.activeCollection = c;
+      renderPaths();
+      loadCollection(c);
+    };
     list.appendChild(div);
   });
 }
 
 $('btn-add-coll').onclick = () => {
   let p = $('new-coll-input').value.trim();
-  if(!p) return;
-  if(p.startsWith('/')) p = p.substring(1);
-  if(!S.collections.includes(p)) { S.collections.push(p); localStorage.setItem('rtdb_paths', JSON.stringify(S.collections)); }
-  S.activeCollection = p; loadCollection(p); renderPaths(); $('new-coll-input').value = '';
+  if (!p) { toast('Masukkan path terlebih dahulu', 'warning'); return; }
+  if (p.startsWith('/')) p = p.substring(1);
+  if (!S.collections.includes(p)) {
+    S.collections.push(p);
+    localStorage.setItem('rtdb_paths', JSON.stringify(S.collections));
+  }
+  S.activeCollection = p;
+  renderPaths();
+  $('new-coll-input').value = '';
+  if (S.db) loadCollection(p);
+  else { toast('Hubungkan Firebase terlebih dahulu', 'warning'); $('modal-overlay').classList.add('open'); }
 };
 
-/* DATA LAYER (RTDB) */
-async function loadCollection(path) {
-  if (S.unsubscribe && S.activeCollection) { S.db.ref(S.activeCollection).off('value', S.unsubscribe); S.unsubscribe = null; }
-  $('state-panel').style.display = 'flex'; $('state-panel').innerHTML = 'Memuat Data...'; $('grid-wrap').style.display = 'none';
-  $('active-coll-name').textContent = '/' + path;
+$('new-coll-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') $('btn-add-coll').click();
+});
 
-  const callback = (snap) => {
-    const val = snap.val() || {};
-    S.data = [];
+/* ══════════════════════════════════════════
+   STATE PANEL
+══════════════════════════════════════════ */
+function showStatePanel(state, msg) {
+  const panel = $('state-panel');
+  $('grid-wrap').style.display = 'none';
+  panel.style.display = 'flex';
+
+  const configs = {
+    idle: { icon:'🔥', title:'Siap Terhubung', sub:'Klik <strong>Konfigurasi</strong> untuk memasukkan detail Firebase Anda.' },
+    loading: { icon:'<span class="state-spin">⟳</span>', title:'Memuat Data…', sub: msg || 'Mengambil data dari Firebase RTDB' },
+    empty: { icon:'📭', title:'Node Kosong', sub:'Tidak ada data di path ini, atau format tidak dikenali.' },
+    error: { icon:'⚠️', title:'Gagal Memuat', sub: msg || 'Terjadi kesalahan saat mengambil data.' },
+  };
+  const c = configs[state] || configs.idle;
+  panel.innerHTML = `<div class="state-icon">${c.icon}</div><div class="state-title">${c.title}</div><div class="state-sub">${c.sub}</div>`;
+}
+
+/* ══════════════════════════════════════════
+   DATA LAYER
+══════════════════════════════════════════ */
+function detachListener() {
+  if (S.rtdbListener && S.activeCollection) {
+    S.db.ref(S.activeCollection).off('value', S.rtdbListener);
+    S.rtdbListener = null;
+  }
+}
+
+async function loadCollection(path) {
+  if (!S.db) return;
+  detachListener();
+  $('active-coll-name').textContent = '/' + path;
+  $('record-count').style.display = 'none';
+  showStatePanel('loading');
+  $('add-row-bar').style.display = 'none';
+
+  const processSnap = (snap) => {
+    const val = snap.val();
+    if (!val || typeof val !== 'object') {
+      S.data = []; S.columns = [];
+      showStatePanel('empty');
+      $('record-count').style.display = 'none';
+      return;
+    }
+
     const keyset = new Set();
-    
-    // Flatten data RTDB menjadi array of objects
-    Object.keys(val).forEach(key => {
-      let rowData = val[key];
-      // Jika datanya cuma boolean/string (seperti di enrollments), ubah jadi object
-      if(typeof rowData !== 'object' || rowData === null) rowData = { value: rowData };
-      
-      const rowObj = { id: key, ...rowData };
-      
-      // Ambil semua header kolom yang bukan object (karena object bersarang susah ditampilin di tabel flat)
-      Object.keys(rowObj).forEach(k => {
-        if(k !== 'id' && typeof rowObj[k] !== 'object') keyset.add(k);
-        else if (k !== 'id' && typeof rowObj[k] === 'object') {
-           // Stringify nested object agar tetap bisa dibaca
-           rowObj[k] = JSON.stringify(rowObj[k]);
-           keyset.add(k);
+    S.data = Object.entries(val).map(([key, rowData]) => {
+      if (typeof rowData !== 'object' || rowData === null) rowData = { value: rowData };
+      const rowObj = { _id: key };
+      Object.entries(rowData).forEach(([k, v]) => {
+        if (typeof v === 'object' && v !== null) {
+          rowObj[k] = JSON.stringify(v);
+        } else {
+          rowObj[k] = v;
         }
+        keyset.add(k);
       });
-      S.data.push(rowObj);
+      return rowObj;
     });
 
-    S.columns = Array.from(keyset);
+    // Pertahankan urutan kolom yang sudah ada, tambah kolom baru
+    const newCols = Array.from(keyset);
+    const preserved = S.columns.filter(c => newCols.includes(c));
+    const added = newCols.filter(c => !preserved.includes(c));
+    S.columns = [...preserved, ...added];
+
     S.editingRows.clear();
     applyFilter();
     $('record-count').textContent = `${S.data.length} baris`;
+    $('record-count').style.display = '';
   };
 
   const ref = S.db.ref(path);
+
   if ($('realtime-toggle').checked) {
-    S.unsubscribe = callback; ref.on('value', callback);
+    S.rtdbListener = (snap) => processSnap(snap);
+    ref.on('value', S.rtdbListener, (err) => {
+      showStatePanel('error', err.message);
+      toast(`Error realtime: ${err.message}`, 'error');
+    });
   } else {
-    try { const snap = await ref.once('value'); callback(snap); } 
-    catch(e) { toast(`Gagal: ${e.message}`, 'error'); }
+    try {
+      const snap = await ref.once('value');
+      processSnap(snap);
+    } catch(e) {
+      showStatePanel('error', e.message);
+      toast(`Gagal memuat: ${e.message}`, 'error');
+    }
   }
 }
 
 function applyFilter() {
-  const q = $('search-input').value.toLowerCase();
-  S.filteredData = q ? S.data.filter(row => Object.values(row).some(v => String(v).toLowerCase().includes(q))) : [...S.data];
+  const q = $('search-input').value.toLowerCase().trim();
+  S.filteredData = q
+    ? S.data.filter(row =>
+        Object.values(row).some(v => String(v ?? '').toLowerCase().includes(q))
+      )
+    : [...S.data];
   renderGrid();
 }
 
-/* CRUD RTDB */
+/* ══════════════════════════════════════════
+   CRUD
+══════════════════════════════════════════ */
 async function updateDoc(id, data) {
   try {
-    // Parse kembali data yang mungkin distringify
-    for(let k in data) { try { data[k] = JSON.parse(data[k]) } catch(e){} }
-    await S.db.ref(S.activeCollection + '/' + id).update(data);
-    toast('Disimpan ✓', 'success');
+    // Coba parse kembali string JSON (nested object yang di-stringify)
+    const parsed = {};
+    for (const k in data) {
+      try { parsed[k] = JSON.parse(data[k]); } catch(e) { parsed[k] = data[k]; }
+    }
+    await S.db.ref(`${S.activeCollection}/${id}`).update(parsed);
+    toast('Data berhasil disimpan', 'success');
     if (!$('realtime-toggle').checked) loadCollection(S.activeCollection);
     return true;
-  } catch(e) { toast(e.message, 'error'); return false; }
+  } catch(e) {
+    toast(`Gagal menyimpan: ${e.message}`, 'error');
+    return false;
+  }
 }
+
 async function deleteDoc(id) {
-  if(!await confirm2('Hapus data ini?')) return;
-  await S.db.ref(S.activeCollection + '/' + id).remove();
-  toast('Dihapus', 'info');
-  if (!$('realtime-toggle').checked) loadCollection(S.activeCollection);
+  const ok = await confirm2(`Hapus data dengan key "${id}"?`, 'Hapus Data', '🗑');
+  if (!ok) return;
+  try {
+    await S.db.ref(`${S.activeCollection}/${id}`).remove();
+    toast('Data dihapus', 'info');
+    if (!$('realtime-toggle').checked) loadCollection(S.activeCollection);
+  } catch(e) {
+    toast(`Gagal menghapus: ${e.message}`, 'error');
+  }
 }
+
 async function addDoc(data) {
   try {
-    // Jika ada input 'id', kita pakai sebagai key (misal User ID). Jika tidak, pakai .push() auto ID
-    if(data.id) {
-      const targetId = data.id; delete data.id;
-      await S.db.ref(S.activeCollection + '/' + targetId).set(data);
+    const customId = data._customId;
+    delete data._customId;
+    if (customId) {
+      await S.db.ref(`${S.activeCollection}/${customId}`).set(data);
     } else {
       await S.db.ref(S.activeCollection).push(data);
     }
-    toast('Ditambahkan ✓', 'success');
+    toast('Baris baru berhasil ditambahkan', 'success');
     if (!$('realtime-toggle').checked) loadCollection(S.activeCollection);
     return true;
-  } catch(e) { toast(e.message, 'error'); return false; }
+  } catch(e) {
+    toast(`Gagal menambah: ${e.message}`, 'error');
+    return false;
+  }
 }
 
-/* RENDER GRID (Persis dengan yang lama) */
+/* ══════════════════════════════════════════
+   RENDER GRID
+══════════════════════════════════════════ */
 function renderGrid() {
-  $('state-panel').style.display = 'none'; $('grid-wrap').style.display = 'block';
-  const thead = $('sheet-head'); const tbody = $('sheet-body');
-  thead.innerHTML = ''; tbody.innerHTML = '';
+  $('state-panel').style.display = 'none';
+  $('grid-wrap').style.display = 'block';
 
-  thead.innerHTML += `<th style="width:40px; text-align:center">#</th><th>ID Node (Key)</th>`;
-  S.columns.forEach(col => thead.innerHTML += `<th>${col} <button onclick="removeCol('${col}')" style="background:none;border:none;color:white;cursor:pointer">✕</button></th>`);
-  thead.innerHTML += `<th style="text-align:center">Aksi</th>`;
+  const thead = $('sheet-head');
+  const tbody = $('sheet-body');
+
+  // ── HEADER ──
+  while (thead.firstChild) thead.removeChild(thead.firstChild);
+
+  const makeHead = (content, cls = '') => {
+    const th = document.createElement('th');
+    if (cls) th.className = cls;
+    if (typeof content === 'string') th.textContent = content;
+    else th.appendChild(content);
+    return th;
+  };
+
+  thead.appendChild(makeHead('#', 'th-num'));
+  thead.appendChild(makeHead('ID / Key', 'th-id'));
+
+  S.columns.forEach(col => {
+    const wrap = document.createElement('div');
+    wrap.className = 'th-col-wrap';
+    const name = document.createElement('span');
+    name.textContent = col;
+    const btn = document.createElement('button');
+    btn.className = 'th-col-del';
+    btn.title = 'Sembunyikan kolom';
+    btn.textContent = '✕';
+    btn.onclick = () => removeCol(col);
+    wrap.appendChild(name);
+    wrap.appendChild(btn);
+    const th = document.createElement('th');
+    th.appendChild(wrap);
+    thead.appendChild(th);
+  });
+
+  thead.appendChild(makeHead('Aksi', 'th-actions'));
+
+  // ── BODY ──
+  while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+
+  if (!S.filteredData.length) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = S.columns.length + 3;
+    td.style.cssText = 'text-align:center; padding:32px; color:var(--text-4); font-size:13px;';
+    td.textContent = $('search-input').value ? 'Tidak ada hasil yang cocok.' : 'Tidak ada data.';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+    return;
+  }
 
   S.filteredData.forEach((row, idx) => {
+    const id = row._id;
+    const isEditing = S.editingRows.has(id);
     const tr = document.createElement('tr');
-    let html = `<td style="text-align:center; color:#888">${idx+1}</td><td><span class="cell-display" style="color:#888;font-size:11px">${row.id}</span></td>`;
-    
+    if (isEditing) tr.classList.add('editing');
+
+    // No.
+    const tdNum = document.createElement('td');
+    tdNum.className = 'td-num';
+    tdNum.textContent = idx + 1;
+    tr.appendChild(tdNum);
+
+    // ID
+    const tdId = document.createElement('td');
+    tdId.className = 'td-id';
+    const idSpan = document.createElement('span');
+    idSpan.className = 'cell-display id-cell';
+    idSpan.textContent = id;
+    idSpan.title = id;
+    tdId.appendChild(idSpan);
+    tr.appendChild(tdId);
+
+    // Data columns
     S.columns.forEach(col => {
-      const val = row[col] == null ? '' : row[col];
-      if(S.editingRows.has(row.id)) {
-        html += `<td><input type="text" class="cell-input" data-col="${col}" value='${val.replace(/'/g, "&#39;")}' /></td>`;
+      const td = document.createElement('td');
+      const val = row[col] ?? '';
+      if (isEditing) {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.className = 'cell-input';
+        inp.dataset.col = col;
+        inp.value = val;
+        td.appendChild(inp);
       } else {
-        html += `<td><span class="cell-display" ondblclick="editRow('${row.id}')">${val}</span></td>`;
+        const span = document.createElement('span');
+        span.className = 'cell-display';
+        if (val === '' || val == null) {
+          span.classList.add('cell-null');
+          span.textContent = '—';
+        } else {
+          span.textContent = val;
+          span.title = val;
+        }
+        span.ondblclick = () => { S.editingRows.add(id); renderGrid(); };
+        td.appendChild(span);
       }
+      tr.appendChild(td);
     });
 
-    if(S.editingRows.has(row.id)) {
-      html += `<td class="actions-cell">
-        <button class="row-save" onclick="saveRow('${row.id}', this)">💾</button>
-        <button class="row-cancel" onclick="S.editingRows.delete('${row.id}'); renderGrid()">✕</button>
-      </td>`;
+    // Actions
+    const tdAct = document.createElement('td');
+    tdAct.className = 'td-actions';
+    const wrap = document.createElement('div');
+    wrap.className = 'row-btns';
+
+    if (isEditing) {
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'row-btn row-save';
+      saveBtn.textContent = '💾 Simpan';
+      saveBtn.onclick = () => {
+        const inputs = tr.querySelectorAll('.cell-input');
+        const newData = {};
+        inputs.forEach(inp => { newData[inp.dataset.col] = inp.value; });
+        updateDoc(id, newData).then(ok => {
+          if (ok) { S.editingRows.delete(id); if (!$('realtime-toggle').checked) renderGrid(); }
+        });
+      };
+
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'row-btn row-cancel';
+      cancelBtn.textContent = '✕';
+      cancelBtn.onclick = () => { S.editingRows.delete(id); renderGrid(); };
+
+      wrap.appendChild(saveBtn);
+      wrap.appendChild(cancelBtn);
     } else {
-      html += `<td class="actions-cell">
-        <button class="row-edit" onclick="editRow('${row.id}')">✎</button>
-        <button class="row-delete" onclick="deleteDoc('${row.id}')">🗑</button>
-      </td>`;
+      const editBtn = document.createElement('button');
+      editBtn.className = 'row-btn row-edit';
+      editBtn.textContent = '✎ Edit';
+      editBtn.onclick = () => { S.editingRows.add(id); renderGrid(); };
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'row-btn row-delete';
+      delBtn.textContent = '🗑';
+      delBtn.title = 'Hapus baris ini';
+      delBtn.onclick = () => deleteDoc(id);
+
+      wrap.appendChild(editBtn);
+      wrap.appendChild(delBtn);
     }
-    tr.innerHTML = html; tbody.appendChild(tr);
+
+    tdAct.appendChild(wrap);
+    tr.appendChild(tdAct);
+    tbody.appendChild(tr);
   });
 }
 
-window.editRow = (id) => { S.editingRows.add(id); renderGrid(); };
-window.saveRow = (id, btn) => {
-  const inputs = btn.closest('tr').querySelectorAll('.cell-input');
-  const newData = {}; inputs.forEach(inp => newData[inp.dataset.col] = inp.value);
-  updateDoc(id, newData).then(ok => { if(ok){ S.editingRows.delete(id); renderGrid(); }});
+function removeCol(col) {
+  S.columns = S.columns.filter(c => c !== col);
+  renderColChips();
+  renderGrid();
+}
+
+/* ══════════════════════════════════════════
+   COLUMN MANAGEMENT
+══════════════════════════════════════════ */
+function renderColChips() {
+  const wrap = $('col-chips');
+  wrap.innerHTML = '';
+  if (!S.columns.length) {
+    const el = document.createElement('span');
+    el.className = 'col-chip-empty';
+    el.textContent = 'Belum ada kolom';
+    wrap.appendChild(el);
+    return;
+  }
+  S.columns.forEach(col => {
+    const chip = document.createElement('span');
+    chip.className = 'col-chip';
+    chip.textContent = col;
+    const btn = document.createElement('button');
+    btn.title = 'Sembunyikan kolom';
+    btn.textContent = '✕';
+    btn.onclick = () => removeCol(col);
+    chip.appendChild(btn);
+    wrap.appendChild(chip);
+  });
+}
+
+$('btn-manage-cols').onclick = () => {
+  renderColChips();
+  $('col-modal-overlay').classList.add('open');
 };
-window.removeCol = (col) => { S.columns = S.columns.filter(c => c !== col); renderGrid(); };
+$('btn-col-modal-close').onclick = () => {
+  $('col-modal-overlay').classList.remove('open');
+  renderGrid();
+};
+$('btn-add-col').onclick = () => {
+  const v = $('new-col-input').value.trim();
+  if (!v) { toast('Nama kolom tidak boleh kosong', 'warning'); return; }
+  if (S.columns.includes(v)) { toast('Kolom sudah ada', 'warning'); return; }
+  S.columns.push(v);
+  $('new-col-input').value = '';
+  renderColChips();
+  toast(`Kolom "${v}" ditambahkan`, 'success');
+};
+$('new-col-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') $('btn-add-col').click();
+});
 
-/* SEARCH & EVENTS */
-$('search-input').oninput = () => applyFilter();
-$('btn-refresh').onclick = () => loadCollection(S.activeCollection);
-$('realtime-toggle').onchange = () => loadCollection(S.activeCollection);
+/* ══════════════════════════════════════════
+   SEARCH & TOOLBAR EVENTS
+══════════════════════════════════════════ */
+$('search-input').oninput = applyFilter;
 
-/* MODALS */
+$('btn-refresh').onclick = () => {
+  if (S.activeCollection) loadCollection(S.activeCollection);
+};
+
+$('realtime-toggle').onchange = function() {
+  const label = $('realtime-wrap');
+  if (this.checked) {
+    label.classList.add('on');
+    toast('Mode realtime aktif', 'info');
+  } else {
+    label.classList.remove('on');
+    detachListener();
+    toast('Mode realtime nonaktif', 'info');
+  }
+  if (S.activeCollection && S.db) loadCollection(S.activeCollection);
+};
+
+/* ══════════════════════════════════════════
+   MODAL: KONFIGURASI
+══════════════════════════════════════════ */
 $('btn-config').onclick = () => {
   const c = loadCfg() || {};
   ['apiKey','databaseURL','projectId'].forEach(k => $(`cfg-${k}`).value = c[k] || '');
-  $('modal-overlay').style.display='flex';
+  $('modal-overlay').classList.add('open');
 };
-$('btn-modal-cancel').onclick = () => $('modal-overlay').style.display='none';
+$('btn-modal-cancel').onclick = () => $('modal-overlay').classList.remove('open');
 $('btn-modal-save').onclick = () => {
+  const databaseURL = $('cfg-databaseURL').value.trim();
+  if (!databaseURL) { toast('Database URL wajib diisi!', 'warning'); return; }
   const cfg = {
-    apiKey: $('cfg-apiKey').value,
-    databaseURL: $('cfg-databaseURL').value,
-    projectId: $('cfg-projectId').value
+    apiKey: $('cfg-apiKey').value.trim(),
+    databaseURL,
+    projectId: $('cfg-projectId').value.trim(),
   };
-  $('modal-overlay').style.display='none'; initFirebase(cfg);
+  $('modal-overlay').classList.remove('open');
+  initFirebase(cfg);
 };
+// Close modal on overlay click
+$('modal-overlay').onclick = (e) => { if (e.target === $('modal-overlay')) $('modal-overlay').classList.remove('open'); };
+$('col-modal-overlay').onclick = (e) => { if (e.target === $('col-modal-overlay')) { $('col-modal-overlay').classList.remove('open'); renderGrid(); } };
 
-/* ADD ROW UI */
+/* ══════════════════════════════════════════
+   ADD ROW UI
+══════════════════════════════════════════ */
 $('btn-add-record').onclick = () => {
-  $('add-row-bar').style.display = 'flex';
-  const bar = $('new-row-fields'); bar.innerHTML = '';
-  // Tambah field untuk custom ID khusus RTDB
-  bar.innerHTML += `<div style="display:flex;flex-direction:column;min-width:120px"><label style="font-size:10px">Key / ID (Kosongkan utk Auto ID)</label><input type="text" id="nr-id" placeholder="ID/Key node" /></div>`;
+  const bar = $('add-row-bar');
+  const fields = $('new-row-fields');
+  bar.style.display = 'flex';
+  fields.innerHTML = '';
+
+  // Custom ID field
+  const idField = document.createElement('div');
+  idField.className = 'nr-field';
+  const idLabel = document.createElement('label');
+  idLabel.textContent = 'Key / ID (kosong = Auto ID)';
+  const idInput = document.createElement('input');
+  idInput.type = 'text';
+  idInput.id = 'nr-id';
+  idInput.placeholder = 'ID kustom…';
+  idField.appendChild(idLabel);
+  idField.appendChild(idInput);
+  fields.appendChild(idField);
+
+  // Column fields
   S.columns.forEach(col => {
-    bar.innerHTML += `<div style="display:flex;flex-direction:column;min-width:120px"><label style="font-size:10px">${col}</label><input type="text" class="nr-input" data-col="${col}" /></div>`;
+    const f = document.createElement('div');
+    f.className = 'nr-field';
+    const l = document.createElement('label');
+    l.textContent = col;
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'nr-input';
+    inp.dataset.col = col;
+    inp.placeholder = col;
+    f.appendChild(l);
+    f.appendChild(inp);
+    fields.appendChild(f);
   });
+
+  // Focus first input
+  setTimeout(() => idInput.focus(), 50);
 };
-$('btn-cancel-new').onclick = () => $('add-row-bar').style.display = 'none';
-$('btn-save-new').onclick = () => {
+
+$('btn-cancel-new').onclick = () => {
+  $('add-row-bar').style.display = 'none';
+};
+
+$('btn-save-new').onclick = async () => {
   const data = {};
-  const customId = $('nr-id').value.trim();
-  if(customId) data.id = customId;
-  document.querySelectorAll('.nr-input').forEach(i => { if(i.value) data[i.dataset.col] = i.value; });
-  addDoc(data).then(ok => { if(ok) $('add-row-bar').style.display = 'none'; });
+  const customId = $('nr-id')?.value?.trim();
+  if (customId) data._customId = customId;
+  document.querySelectorAll('.nr-input').forEach(i => {
+    if (i.value.trim()) data[i.dataset.col] = i.value.trim();
+  });
+  const ok = await addDoc(data);
+  if (ok) $('add-row-bar').style.display = 'none';
 };
 
-/* EXPORT CSV */
+/* ══════════════════════════════════════════
+   EXPORT CSV
+══════════════════════════════════════════ */
 $('btn-export-csv').onclick = () => {
-  const cols = ['id', ...S.columns];
-  let csv = cols.join(',') + '\n';
-  S.filteredData.forEach(row => { csv += cols.map(c => `"${String(row[c]||'').replace(/"/g,'""')}"`).join(',') + '\n'; });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'}));
-  a.download = `${S.activeCollection.replace(/\//g,'_')}.csv`; a.click();
+  if (!S.filteredData.length) { toast('Tidak ada data untuk diekspor', 'warning'); return; }
+  const cols = ['_id', ...S.columns];
+  const headers = ['id', ...S.columns];
+  let csv = headers.map(h => `"${h}"`).join(',') + '\n';
+  S.filteredData.forEach(row => {
+    csv += cols.map(c => `"${String(row[c] ?? '').replace(/"/g,'""')}"`).join(',') + '\n';
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = `${(S.activeCollection || 'export').replace(/\//g,'_')}.csv`;
+  a.click();
+  toast(`Mengekspor ${S.filteredData.length} baris ke CSV`, 'success');
 };
 
-/* BOOT */
-function loadCfg() { try { return JSON.parse(localStorage.getItem('rtdb_cfg')); } catch(e){ return null; } }
+/* ══════════════════════════════════════════
+   KEYBOARD SHORTCUTS
+══════════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  // Escape: tutup modal / batal edit
+  if (e.key === 'Escape') {
+    if ($('confirm-overlay').classList.contains('open')) { $('btn-confirm-no').click(); return; }
+    if ($('col-modal-overlay').classList.contains('open')) { $('btn-col-modal-close').click(); return; }
+    if ($('modal-overlay').classList.contains('open')) { $('btn-modal-cancel').click(); return; }
+    if ($('add-row-bar').style.display !== 'none') { $('btn-cancel-new').click(); return; }
+    if (S.editingRows.size) { S.editingRows.clear(); renderGrid(); }
+  }
+});
+
+/* ══════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════ */
+function loadCfg() {
+  try { return JSON.parse(localStorage.getItem('rtdb_cfg')); } catch(e) { return null; }
+}
+
 (function boot() {
-  try { S.collections = JSON.parse(localStorage.getItem('rtdb_paths')) || []; } catch(e){}
+  try { S.collections = JSON.parse(localStorage.getItem('rtdb_paths')) || []; } catch(e) {}
   renderPaths();
+
   const cfg = loadCfg();
-  if(cfg && cfg.databaseURL) initFirebase(cfg);
-  else $('modal-overlay').style.display='flex';
+  if (cfg?.databaseURL) {
+    initFirebase(cfg);
+  } else {
+    $('modal-overlay').classList.add('open');
+  }
 })();
 </script>
 </body>
