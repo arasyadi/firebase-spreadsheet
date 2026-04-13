@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Firebase Spreadsheet</title>
+
+<!-- Firebase SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<style>
+/* ─── TOKENS ─────────────────────────────────────────────── */
+:root {
+  /* Surfaces */
+  --bg:        #F2F4F7;
+  --surface:   #FFFFFF;
+  --surface-2: #EEF1F6;
+  --overlay:   rgba(0,0,0,.45);
+
+  /* Brand — deep ocean teal */
+  --brand:        #0E6655;   /* contrast on white: 5.6:1 ✓ AA */
+  --brand-light:  #E6F3F1;
+  --brand-hover:  #0A5244;
+
+  /* Accents */
+  --accent:    #C44B1B;   /* contrast on white: 5.2:1 ✓ AA */
+  --accent-lt: #FDEEE8;
+
+  /* Status */
+  --success:   #166534;   /* contrast on white: 7.5:1 ✓ AAA */
+  --success-lt:#DCFCE7;
+  --danger:    #991B1B;   /* contrast on white: 7.1:1 ✓ AAA */
+  --danger-lt: #FEE2E2;
+  --warn:      #92400E;   /* contrast on white: 6.4:1 ✓ AA */
+  --warn-lt:   #FEF3C7;
+
+  /* Text */
+  --text-1:    #111827;   /* contrast on white: 17.7:1 ✓ AAA */
+  --text-2:    #374151;   /* contrast on white: 10.4:1 ✓ AAA */
+  --text-3:    #6B7280;   /* contrast on white:  4.6:1 ✓ AA */
+  --text-inv:  #FFFFFF;
+
+  /* Borders */
+  --border:    #D1D5DB;
+  --border-focus: #0E6655;
+
+  /* Grid */
+  --row-hover:    #F0F9F7;
+  --row-selected: #DBEEF8;
+  --row-odd:      #F9FAFB;
+  --cell-border:  #E5E7EB;
+  --header-bg:    #1A2E2A;   /* contrast on white text: 14:1 ✓ AAA */
+
+  /* Sizing */
+  --radius: 6px;
+  --radius-lg: 10px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.12);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.12);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,.16);
+
+  /* Fonts */
+  --font-ui:   'Sora', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  /* Transitions */
+  --t: 160ms ease;
+}
+
+/* ─── RESET & BASE ───────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; }
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text-1);
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Focus ring — WCAG 2.4.7 */
+:focus-visible {
+  outline: 3px solid var(--border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* ─── TOP BAR ────────────────────────────────────────────── */
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  height: 52px;
+  background: var(--header-bg);
+  color: var(--text-inv);
+  box-shadow: var(--shadow-md);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  flex-shrink: 0;
+}
+#topbar .logo {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -.4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+}
+#topbar .logo svg { flex-shrink: 0; }
+#topbar .sep { width: 1px; height: 24px; background: rgba(255,255,255,.2); }
+#topbar .spacer { flex: 1; }
+
+.tb-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--t), transform var(--t);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.tb-btn:active { transform: scale(.97); }
+.tb-btn.primary { background: var(--brand); color: #fff; }
+.tb-btn.primary:hover { background: var(--brand-hover); }
+.tb-btn.danger  { background: var(--danger); color: #fff; }
+.tb-btn.danger:hover  { background: #7F1D1D; }
+.tb-btn.ghost   { background: rgba(255,255,255,.12); color: #fff; }
+.tb-btn.ghost:hover { background: rgba(255,255,255,.22); }
+.tb-btn.light   { background: var(--surface); color: var(--text-1); }
+.tb-btn.light:hover { background: var(--surface-2); }
+.tb-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+
+/* ─── STATUS BADGE ───────────────────────────────────────── */
+#status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: rgba(255,255,255,.12);
+  color: #fff;
+  white-space: nowrap;
+}
+#status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #6B7280;
+  flex-shrink: 0;
+  transition: background var(--t);
+}
+#status-dot.connected { background: #4ADE80; }
+#status-dot.error     { background: #F87171; }
+
+/* ─── LAYOUT ─────────────────────────────────────────────── */
+#layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ─── SIDEBAR ────────────────────────────────────────────── */
+#sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width var(--t);
+}
+#sidebar.collapsed { width: 0; overflow: hidden; }
+
+.sidebar-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-section:last-child { border-bottom: none; flex: 1; overflow-y: auto; }
+.sidebar-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-3);
+  margin-bottom: 12px;
+}
+
+/* ─── FORM ELEMENTS ──────────────────────────────────────── */
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 4px;
+}
+input[type="text"], input[type="password"], textarea, select {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-1);
+  background: var(--surface);
+  transition: border-color var(--t);
+  resize: vertical;
+}
+input[type="text"]:focus,
+input[type="password"]:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--border-focus);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(14,102,85,.15);
+}
+.form-row { margin-bottom: 10px; }
+.form-row:last-child { margin-bottom: 0; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t);
+  width: 100%;
+}
+.btn.primary { background: var(--brand); color: #fff; }
+.btn.primary:hover { background: var(--brand-hover); }
+.btn.outline {
+  background: transparent;
+  color: var(--brand);
+  border: 1.5px solid var(--brand);
+}
+.btn.outline:hover { background: var(--brand-light); }
+.btn.sm { padding: 5px 10px; font-size: 12px; width: auto; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ─── COLLECTION LIST ────────────────────────────────────── */
+.coll-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--t);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  color: var(--text-2);
+}
+.coll-item:hover { background: var(--surface-2); }
+.coll-item.active { background: var(--brand-light); color: var(--brand); font-weight: 600; }
+.coll-item svg { flex-shrink: 0; color: inherit; }
+.coll-item .del-coll {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-3);
+  padding: 2px;
+  border-radius: 4px;
+  display: none;
+  transition: color var(--t);
+}
+.coll-item:hover .del-coll { display: flex; }
+.coll-item .del-coll:hover { color: var(--danger); }
+
+/* ─── MAIN CONTENT ───────────────────────────────────────── */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ─── TOOLBAR ────────────────────────────────────────────── */
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+#toolbar .coll-label {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-1);
+  margin-right: 4px;
+  font-family: var(--font-mono);
+}
+#toolbar .count-badge {
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--brand-light);
+  color: var(--brand);
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+#toolbar .spacer { flex: 1; }
+#search-input {
+  width: 200px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: var(--font-ui);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+#search-input:focus { border-color: var(--border-focus); outline: none; background: var(--surface); }
+
+/* ─── GRID WRAPPER ───────────────────────────────────────── */
+#grid-wrap {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+}
+
+/* ─── SPREADSHEET TABLE ──────────────────────────────────── */
+#sheet {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+#sheet thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--header-bg);
+  color: #fff;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  padding: 10px 12px;
+  text-align: left;
+  white-space: nowrap;
+  border-right: 1px solid rgba(255,255,255,.1);
+  user-select: none;
+}
+#sheet thead th:first-child { width: 40px; padding: 10px 8px; text-align: center; }
+#sheet thead th.actions-col { width: 96px; text-align: center; }
+#sheet thead th .col-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#sheet thead th .del-col {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: rgba(255,255,255,.4);
+  padding: 0 2px;
+  border-radius: 3px;
+  display: none;
+  line-height: 1;
+  font-size: 14px;
+  transition: color var(--t);
+}
+#sheet thead th:hover .del-col { display: inline-block; }
+#sheet thead th .del-col:hover { color: #F87171; }
+
+#sheet tbody tr {
+  border-bottom: 1px solid var(--cell-border);
+  transition: background var(--t);
+}
+#sheet tbody tr:nth-child(odd) { background: var(--row-odd); }
+#sheet tbody tr:hover { background: var(--row-hover); }
+#sheet tbody tr.selected { background: var(--row-selected) !important; }
+#sheet tbody tr.dirty { outline: 2px solid var(--warn) inset; }
+
+#sheet tbody td {
+  padding: 0;
+  border-right: 1px solid var(--cell-border);
+  vertical-align: middle;
+  max-width: 300px;
+  position: relative;
+}
+#sheet tbody td:first-child { /* row number */
+  text-align: center;
+  color: var(--text-3);
+  font-size: 11px;
+  padding: 0 8px;
+  width: 40px;
+  cursor: default;
+  background: var(--surface-2);
+  border-right: 2px solid var(--border);
+}
+#sheet tbody td.actions-cell {
+  text-align: center;
+  padding: 4px 6px;
+  background: var(--surface);
+  border-left: 2px solid var(--border);
+  position: sticky;
+  right: 0;
+  white-space: nowrap;
+}
+
+/* ─── EDITABLE CELL ──────────────────────────────────────── */
+.cell-display {
+  padding: 8px 12px;
+  min-height: 36px;
+  cursor: cell;
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-1);
+  display: block;
+}
+.cell-display.null-val { color: var(--text-3); font-style: italic; }
+.cell-display:hover { background: rgba(14,102,85,.06); }
+
+.cell-input {
+  width: 100%;
+  min-width: 120px;
+  padding: 7px 11px;
+  border: none;
+  border-radius: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-1);
+  background: #FFFDE7;
+  box-shadow: 0 0 0 2px var(--brand) inset;
+  outline: none;
+  display: block;
+}
+
+/* ─── ACTION BUTTONS IN ROW ──────────────────────────────── */
+.row-save, .row-cancel, .row-delete, .row-edit {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t);
+}
+.row-save   { background: var(--success); color: #fff; }
+.row-save:hover { background: #14532D; }
+.row-cancel { background: var(--surface-2); color: var(--text-2); }
+.row-cancel:hover { background: var(--border); }
+.row-delete { background: var(--danger-lt); color: var(--danger); }
+.row-delete:hover { background: var(--danger); color: #fff; }
+.row-edit   { background: var(--brand-light); color: var(--brand); }
+.row-edit:hover { background: var(--brand); color: #fff; }
+
+/* ─── ADD ROW ────────────────────────────────────────────── */
+#add-row-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-top: 2px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+#add-row-bar label { margin: 0; font-size: 12px; }
+#add-row-bar input {
+  width: 140px;
+  font-size: 12px;
+  padding: 5px 8px;
+}
+
+/* ─── EMPTY / LOADING STATES ─────────────────────────────── */
+#state-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px;
+  color: var(--text-3);
+  text-align: center;
+}
+#state-panel .state-icon { font-size: 48px; }
+#state-panel .state-title { font-size: 18px; font-weight: 700; color: var(--text-2); }
+#state-panel .state-desc { font-size: 14px; max-width: 320px; line-height: 1.6; }
+
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── TOAST ──────────────────────────────────────────────── */
+#toast-area {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  pointer-events: auto;
+  min-width: 240px;
+  max-width: 360px;
+  animation: toast-in .25s ease forwards;
+}
+.toast.success { background: var(--success); }
+.toast.error   { background: var(--danger); }
+.toast.info    { background: var(--brand); }
+.toast.warning { background: var(--warn); }
+@keyframes toast-in { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
+.toast.out { animation: toast-out .2s ease forwards; }
+@keyframes toast-out { to { opacity:0; transform: translateX(20px); } }
+
+/* ─── MODAL ──────────────────────────────────────────────── */
+#modal-overlay {
+  position: fixed; inset: 0;
+  background: var(--overlay);
+  z-index: 500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+#modal-overlay.open { display: flex; }
+#modal-box {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 28px;
+  width: 480px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modal-in .2s ease;
+}
+@keyframes modal-in { from { opacity:0; transform:scale(.95); } to { opacity:1; transform:scale(1); } }
+.modal-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-1);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+  justify-content: flex-end;
+}
+.modal-actions .btn { width: auto; }
+
+/* ─── COLUMN MANAGER ─────────────────────────────────────── */
+.col-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  background: var(--brand-light);
+  color: var(--brand);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  margin: 3px;
+}
+.col-chip button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-3);
+  padding: 0;
+  display: flex;
+  font-size: 14px;
+}
+.col-chip button:hover { color: var(--danger); }
+
+/* ─── CONFIRM DIALOG ─────────────────────────────────────── */
+#confirm-overlay {
+  position: fixed; inset: 0;
+  background: var(--overlay);
+  z-index: 600;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+#confirm-overlay.open { display: flex; }
+#confirm-box {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 28px;
+  width: 360px;
+  max-width: 95vw;
+  text-align: center;
+  animation: modal-in .2s ease;
+}
+#confirm-box .confirm-icon { font-size: 40px; margin-bottom: 12px; }
+#confirm-box h3 { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+#confirm-box p { font-size: 13px; color: var(--text-2); line-height: 1.6; margin-bottom: 20px; }
+#confirm-box .confirm-actions { display: flex; gap: 8px; justify-content: center; }
+#confirm-box .confirm-actions .btn { width: auto; }
+.btn.danger-fill { background: var(--danger); color: #fff; }
+.btn.danger-fill:hover { background: #7F1D1D; }
+
+/* ─── SCROLLBAR ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--surface-2); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+/* ─── RESPONSIVE ─────────────────────────────────────────── */
+@media (max-width: 640px) {
+  #sidebar { width: 100%; position: fixed; inset: 52px 0 0 0; z-index: 50; transform: translateX(-100%); transition: transform var(--t); }
+  #sidebar.mobile-open { transform: translateX(0); }
+}
+</style>
+</head>
+<body>
+
+<!-- ─── TOP BAR ─────────────────────────────────────── -->
+<header id="topbar" role="banner">
+  <div class="logo" aria-label="Firebase Spreadsheet">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="8" height="8" rx="2" fill="#4ADE80"/>
+      <rect x="14" y="2" width="8" height="8" rx="2" fill="rgba(255,255,255,.5)"/>
+      <rect x="2" y="14" width="8" height="8" rx="2" fill="rgba(255,255,255,.5)"/>
+      <rect x="14" y="14" width="8" height="8" rx="2" fill="rgba(255,255,255,.3)"/>
+    </svg>
+    Firebase Spreadsheet
+  </div>
+  <div class="sep" role="separator"></div>
+  <div id="status-badge" aria-live="polite" aria-label="Status koneksi">
+    <div id="status-dot"></div>
+    <span id="status-text">Belum terhubung</span>
+  </div>
+  <div class="spacer"></div>
+  <button class="tb-btn ghost" id="btn-config" aria-label="Buka konfigurasi Firebase">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2"/></svg>
+    Konfigurasi
+  </button>
+  <button class="tb-btn ghost" id="btn-toggle-sidebar" aria-label="Toggle sidebar">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+  </button>
+  <button class="tb-btn light" id="btn-export-csv" aria-label="Ekspor ke CSV" disabled>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Ekspor CSV
+  </button>
+</header>
+
+<!-- ─── LAYOUT ──────────────────────────────────────── -->
+<div id="layout">
+
+  <!-- ─ SIDEBAR ─ -->
+  <nav id="sidebar" aria-label="Panel koleksi">
+    <!-- Firebase Config -->
+    <div class="sidebar-section">
+      <div class="sidebar-title">Koleksi Aktif</div>
+      <div class="form-row">
+        <label for="new-coll-input">Nama Koleksi</label>
+        <input type="text" id="new-coll-input" placeholder="cth: users, nilai, produk" />
+      </div>
+      <button class="btn primary sm" id="btn-add-coll" style="width:100%">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Tambah Koleksi
+      </button>
+    </div>
+
+    <!-- Collection List -->
+    <div class="sidebar-section" id="coll-list-wrap">
+      <div class="sidebar-title">Daftar Koleksi</div>
+      <div id="coll-list" role="list" aria-label="Daftar koleksi Firebase"></div>
+      <p id="coll-empty" style="font-size:12px;color:var(--text-3);text-align:center;padding:12px 0;">
+        Belum ada koleksi. Tambahkan di atas.
+      </p>
+    </div>
+  </nav>
+
+  <!-- ─ MAIN ─ -->
+  <main id="main" aria-label="Area spreadsheet">
+
+    <!-- Toolbar -->
+    <div id="toolbar" role="toolbar" aria-label="Kontrol tabel">
+      <span class="coll-label" id="active-coll-name">—</span>
+      <span class="count-badge" id="record-count" aria-live="polite">0 baris</span>
+      <div class="spacer"></div>
+      <input type="search" id="search-input" placeholder="🔍  Cari…" aria-label="Cari data" disabled />
+      <button class="tb-btn primary" id="btn-add-record" disabled aria-label="Tambah baris baru">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Tambah Baris
+      </button>
+      <button class="tb-btn ghost" id="btn-manage-cols" disabled aria-label="Kelola kolom">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="18" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>
+        Kolom
+      </button>
+      <button class="tb-btn ghost" id="btn-refresh" disabled aria-label="Refresh data">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      </button>
+      <label style="display:flex;align-items:center;gap:6px;margin:0;font-size:12px;cursor:pointer;color:var(--text-2)" id="realtime-label">
+        <input type="checkbox" id="realtime-toggle" style="width:auto;accent-color:var(--brand)" /> 
+        Realtime
+      </label>
+    </div>
+
+    <!-- State Panel (empty/loading) -->
+    <div id="state-panel" role="status">
+      <div class="state-icon">🔥</div>
+      <div class="state-title">Siap Terhubung</div>
+      <div class="state-desc">Klik <strong>Konfigurasi</strong> untuk mengatur Firebase, lalu pilih koleksi dari panel kiri.</div>
+    </div>
+
+    <!-- Grid -->
+    <div id="grid-wrap" role="region" aria-label="Data spreadsheet" style="display:none">
+      <table id="sheet" aria-label="Spreadsheet data Firebase">
+        <thead><tr id="sheet-head"></tr></thead>
+        <tbody id="sheet-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Add Row Bar -->
+    <div id="add-row-bar" style="display:none" role="form" aria-label="Tambah baris baru">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span style="font-size:12px;font-weight:600;color:var(--text-2)">Baris Baru:</span>
+      <div id="new-row-fields" style="display:flex;gap:6px;flex-wrap:wrap;flex:1"></div>
+      <button class="btn primary sm" id="btn-save-new" aria-label="Simpan baris baru">Simpan</button>
+      <button class="btn outline sm" id="btn-cancel-new" aria-label="Batal tambah baris">Batal</button>
+    </div>
+
+  </main>
+</div><!-- /layout -->
+
+<!-- ─── MODAL: FIREBASE CONFIG ──────────────────────── -->
+<div id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div id="modal-box">
+    <div class="modal-title">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      <span id="modal-title">Konfigurasi Firebase</span>
+    </div>
+    <p style="font-size:12px;color:var(--text-3);margin-bottom:16px;line-height:1.6">
+      Dapatkan konfigurasi ini dari Firebase Console → Project Settings → Your apps.
+      Data disimpan di localStorage browser Anda.
+    </p>
+    <div class="form-row">
+      <label for="cfg-apiKey">API Key</label>
+      <input type="password" id="cfg-apiKey" placeholder="AIza..." autocomplete="off" />
+    </div>
+    <div class="form-row">
+      <label for="cfg-authDomain">Auth Domain</label>
+      <input type="text" id="cfg-authDomain" placeholder="project-id.firebaseapp.com" />
+    </div>
+    <div class="form-row">
+      <label for="cfg-projectId">Project ID</label>
+      <input type="text" id="cfg-projectId" placeholder="my-project-id" />
+    </div>
+    <div class="form-row">
+      <label for="cfg-storageBucket">Storage Bucket</label>
+      <input type="text" id="cfg-storageBucket" placeholder="project-id.appspot.com" />
+    </div>
+    <div class="form-row">
+      <label for="cfg-messagingSenderId">Messaging Sender ID</label>
+      <input type="text" id="cfg-messagingSenderId" placeholder="123456789" />
+    </div>
+    <div class="form-row">
+      <label for="cfg-appId">App ID</label>
+      <input type="text" id="cfg-appId" placeholder="1:123:web:abc123" />
+    </div>
+    <details style="margin-top:12px">
+      <summary style="font-size:12px;color:var(--text-3);cursor:pointer;user-select:none">
+        ▸ Import JSON konfigurasi sekaligus
+      </summary>
+      <div class="form-row" style="margin-top:10px">
+        <label for="cfg-json">Paste JSON config</label>
+        <textarea id="cfg-json" rows="5" placeholder='{"apiKey":"...","authDomain":"...","projectId":"...",...}'></textarea>
+      </div>
+      <button class="btn outline sm" id="btn-parse-json" style="width:auto">Parse JSON</button>
+    </details>
+    <div class="modal-actions">
+      <button class="btn outline" id="btn-modal-cancel" style="width:auto">Batal</button>
+      <button class="btn primary" id="btn-modal-save" style="width:auto">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Hubungkan
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODAL: MANAGE COLUMNS ───────────────────────── -->
+<div id="col-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="col-modal-title" style="position:fixed;inset:0;background:var(--overlay);z-index:500;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)">
+  <div id="col-modal-box" style="background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);padding:28px;width:480px;max-width:95vw;animation:modal-in .2s ease">
+    <div class="modal-title">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="4" height="18" rx="1"/><rect x="10" y="3" width="4" height="18" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>
+      <span id="col-modal-title">Kelola Kolom</span>
+    </div>
+    <p style="font-size:12px;color:var(--text-3);margin-bottom:14px">Kolom yang terdeteksi dari data. Tambah kolom baru untuk mengisinya pada baris selanjutnya.</p>
+    <div id="col-chips" style="min-height:40px;border:1.5px dashed var(--border);border-radius:var(--radius);padding:8px;margin-bottom:14px"></div>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="new-col-input" placeholder="Nama kolom baru…" style="flex:1" />
+      <button class="btn primary sm" id="btn-add-col" style="width:auto">Tambah</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn outline" id="btn-col-modal-close" style="width:auto">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── CONFIRM DIALOG ───────────────────────────────── -->
+<div id="confirm-overlay" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+  <div id="confirm-box">
+    <div class="confirm-icon" id="confirm-icon">⚠️</div>
+    <h3 id="confirm-title">Konfirmasi</h3>
+    <p id="confirm-msg">Apakah Anda yakin?</p>
+    <div class="confirm-actions">
+      <button class="btn outline" id="btn-confirm-no">Batal</button>
+      <button class="btn danger-fill" id="btn-confirm-yes">Hapus</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── TOAST AREA ────────────────────────────────────── -->
+<div id="toast-area" aria-live="polite" aria-atomic="false"></div>
+
+<!-- ─── SCRIPT ───────────────────────────────────────── -->
+<script>
+/* ================================================================
+   STATE
+   ================================================================ */
+const S = {
+  db: null,
+  config: null,
+  collections: [],          // [{name}]
+  activeCollection: null,
+  columns: [],              // derived from data
+  data: [],                 // [{id, ...fields}]
+  filteredData: [],
+  editingRows: new Set(),   // docIds currently in edit mode
+  unsubscribe: null,        // realtime listener
+  addingRow: false,
+  newRowData: {},
+};
+
+/* ================================================================
+   UTILS
+   ================================================================ */
+const $ = id => document.getElementById(id);
+const toast = (msg, type='info', dur=3500) => {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.setAttribute('role','alert');
+  const icons = {success:'✓', error:'✕', info:'ℹ', warning:'⚠'};
+  el.innerHTML = `<span>${icons[type]||''}</span><span>${msg}</span>`;
+  $('toast-area').appendChild(el);
+  setTimeout(() => {
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 250);
+  }, dur);
+};
+
+const confirm2 = (msg, title='Konfirmasi', icon='⚠️', yesLabel='Hapus') =>
+  new Promise(resolve => {
+    $('confirm-title').textContent = title;
+    $('confirm-msg').textContent   = msg;
+    $('confirm-icon').textContent  = icon;
+    $('btn-confirm-yes').textContent = yesLabel;
+    $('confirm-overlay').classList.add('open');
+    const yes = () => { cleanup(); resolve(true); };
+    const no  = () => { cleanup(); resolve(false); };
+    const cleanup = () => {
+      $('confirm-overlay').classList.remove('open');
+      $('btn-confirm-yes').removeEventListener('click', yes);
+      $('btn-confirm-no').removeEventListener('click',  no);
+    };
+    $('btn-confirm-yes').addEventListener('click', yes, {once:true});
+    $('btn-confirm-no').addEventListener('click',  no,  {once:true});
+  });
+
+/* ================================================================
+   PERSIST
+   ================================================================ */
+const STORAGE_KEY = 'fbs_config_v1';
+const COLLS_KEY   = 'fbs_collections_v1';
+
+function saveConfig(cfg) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg)); } catch(_){}
+}
+function loadConfig() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(_){ return null; }
+}
+function saveColls(list) {
+  try { localStorage.setItem(COLLS_KEY, JSON.stringify(list)); } catch(_){}
+}
+function loadColls() {
+  try { return JSON.parse(localStorage.getItem(COLLS_KEY)) || []; } catch(_){ return []; }
+}
+
+/* ================================================================
+   FIREBASE INIT
+   ================================================================ */
+function initFirebase(cfg) {
+  try {
+    // Re-init if already inited
+    if (firebase.apps.length) {
+      firebase.apps[0].delete().then(() => _doInit(cfg));
+    } else {
+      _doInit(cfg);
+    }
+  } catch(e) {
+    setStatus('error', 'Gagal terhubung');
+    toast(`Firebase error: ${e.message}`, 'error');
+  }
+}
+function _doInit(cfg) {
+  try {
+    firebase.initializeApp(cfg);
+    S.db = firebase.firestore();
+    S.config = cfg;
+    saveConfig(cfg);
+    setStatus('connected', `${cfg.projectId}`);
+    toast('Firebase terhubung!', 'success');
+    // Enable UI
+    enableUI(true);
+    if (S.activeCollection) loadCollection(S.activeCollection);
+  } catch(e) {
+    setStatus('error', 'Koneksi gagal');
+    toast(`Error: ${e.message}`, 'error');
+  }
+}
+
+function setStatus(state, label) {
+  const dot = $('status-dot');
+  const txt = $('status-text');
+  dot.className = state === 'connected' ? 'connected' : state === 'error' ? 'error' : '';
+  txt.textContent = label || (state === 'connected' ? 'Terhubung' : 'Error');
+}
+
+function enableUI(on) {
+  ['btn-add-record','btn-manage-cols','btn-refresh','search-input','btn-export-csv']
+    .forEach(id => { const el=$(id); if(el) el.disabled = !on; });
+}
+
+/* ================================================================
+   COLLECTIONS
+   ================================================================ */
+function renderCollList() {
+  const list = $('coll-list');
+  const empty = $('coll-empty');
+  list.innerHTML = '';
+  if (!S.collections.length) { empty.style.display='block'; return; }
+  empty.style.display = 'none';
+  S.collections.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'coll-item' + (S.activeCollection === c.name ? ' active' : '');
+    div.setAttribute('role','listitem');
+    div.setAttribute('tabindex','0');
+    div.setAttribute('aria-label',`Koleksi ${c.name}`);
+    div.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+      <span>${escHtml(c.name)}</span>
+      <button class="del-coll" aria-label="Hapus koleksi ${escHtml(c.name)}" title="Hapus koleksi">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>`;
+    div.addEventListener('click', (e) => {
+      if (e.target.closest('.del-coll')) return;
+      selectCollection(c.name);
+    });
+    div.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' ') selectCollection(c.name); });
+    div.querySelector('.del-coll').addEventListener('click', () => removeCollection(c.name));
+    list.appendChild(div);
+  });
+}
+
+function addCollection(name) {
+  name = name.trim();
+  if (!name) { toast('Nama koleksi tidak boleh kosong', 'warning'); return; }
+  if (S.collections.find(c=>c.name===name)) { toast('Koleksi sudah ada', 'warning'); return; }
+  S.collections.push({name});
+  saveColls(S.collections);
+  renderCollList();
+  selectCollection(name);
+  $('new-coll-input').value = '';
+}
+
+async function removeCollection(name) {
+  const ok = await confirm2(`Hapus koleksi "${name}" dari daftar? Data di Firebase tidak terhapus.`, 'Hapus Koleksi', '🗑️', 'Hapus');
+  if (!ok) return;
+  S.collections = S.collections.filter(c=>c.name!==name);
+  saveColls(S.collections);
+  if (S.activeCollection === name) {
+    S.activeCollection = null;
+    showState('empty');
+  }
+  renderCollList();
+  toast(`Koleksi "${name}" dihapus dari daftar`, 'info');
+}
+
+function selectCollection(name) {
+  if (!S.db) { toast('Hubungkan Firebase terlebih dahulu', 'warning'); return; }
+  S.activeCollection = name;
+  renderCollList();
+  $('active-coll-name').textContent = name;
+  loadCollection(name);
+}
+
+/* ================================================================
+   DATA LAYER
+   ================================================================ */
+async function loadCollection(name) {
+  if (S.unsubscribe) { S.unsubscribe(); S.unsubscribe = null; }
+  showState('loading');
+  if ($('realtime-toggle').checked) {
+    S.unsubscribe = S.db.collection(name).onSnapshot(snap => {
+      processSnapshot(snap);
+    }, err => {
+      toast(`Realtime error: ${err.message}`, 'error');
+    });
+  } else {
+    try {
+      const snap = await S.db.collection(name).get();
+      processSnapshot(snap);
+    } catch(e) {
+      toast(`Gagal memuat: ${e.message}`, 'error');
+      showState('error');
+    }
+  }
+}
+
+function processSnapshot(snap) {
+  S.data = snap.docs.map(d => ({id: d.id, ...d.data()}));
+  // Build columns from all keys (excluding 'id')
+  const keyset = new Set();
+  S.data.forEach(row => Object.keys(row).forEach(k => { if(k!=='id') keyset.add(k); }));
+  S.columns = Array.from(keyset);
+  S.editingRows.clear();
+  applyFilter();
+  $('record-count').textContent = `${S.data.length} baris`;
+  $('btn-export-csv').disabled = false;
+}
+
+function applyFilter() {
+  const q = $('search-input').value.toLowerCase();
+  if (!q) {
+    S.filteredData = [...S.data];
+  } else {
+    S.filteredData = S.data.filter(row =>
+      Object.values(row).some(v => String(v).toLowerCase().includes(q))
+    );
+  }
+  renderGrid();
+}
+
+/* ================================================================
+   CRUD
+   ================================================================ */
+async function updateDoc(docId, data) {
+  try {
+    const clean = {};
+    Object.keys(data).forEach(k => { if(k!=='id') clean[k]=data[k]; });
+    await S.db.collection(S.activeCollection).doc(docId).update(clean);
+    toast('Disimpan ✓', 'success');
+    if (!$('realtime-toggle').checked) await loadCollection(S.activeCollection);
+    return true;
+  } catch(e) {
+    toast(`Gagal simpan: ${e.message}`, 'error');
+    return false;
+  }
+}
+
+async function deleteDoc(docId) {
+  const ok = await confirm2('Dokumen ini akan dihapus permanen dari Firebase.', 'Hapus Dokumen', '🗑️', 'Hapus');
+  if (!ok) return;
+  try {
+    await S.db.collection(S.activeCollection).doc(docId).delete();
+    toast('Dokumen dihapus', 'info');
+    if (!$('realtime-toggle').checked) await loadCollection(S.activeCollection);
+  } catch(e) {
+    toast(`Gagal hapus: ${e.message}`, 'error');
+  }
+}
+
+async function addDoc(data) {
+  try {
+    await S.db.collection(S.activeCollection).add(data);
+    toast('Baris baru ditambahkan ✓', 'success');
+    if (!$('realtime-toggle').checked) await loadCollection(S.activeCollection);
+    return true;
+  } catch(e) {
+    toast(`Gagal tambah: ${e.message}`, 'error');
+    return false;
+  }
+}
+
+/* ================================================================
+   GRID RENDER
+   ================================================================ */
+function escHtml(str) {
+  return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showState(state) {
+  const panel = $('state-panel');
+  const grid  = $('grid-wrap');
+  const addBar= $('add-row-bar');
+  if (state === 'grid') {
+    panel.style.display = 'none';
+    grid.style.display  = 'block';
+    addBar.style.display= S.addingRow ? 'flex' : 'none';
+  } else {
+    panel.style.display = 'flex';
+    grid.style.display  = 'none';
+    addBar.style.display= 'none';
+    if (state === 'loading') {
+      panel.innerHTML = `<div class="spinner" role="status" aria-label="Memuat data"></div><div class="state-title">Memuat…</div>`;
+    } else if (state === 'empty') {
+      panel.innerHTML = `<div class="state-icon">📂</div><div class="state-title">Pilih Koleksi</div><div class="state-desc">Pilih atau tambahkan koleksi dari panel kiri untuk mulai bekerja.</div>`;
+    } else if (state === 'error') {
+      panel.innerHTML = `<div class="state-icon">⚠️</div><div class="state-title">Gagal Memuat</div><div class="state-desc">Periksa konfigurasi dan koneksi internet Anda.</div>`;
+    } else if (state === 'no-data') {
+      panel.innerHTML = `<div class="state-icon">🗃️</div><div class="state-title">Koleksi Kosong</div><div class="state-desc">Klik <strong>Tambah Baris</strong> untuk menambahkan dokumen pertama.</div>`;
+    }
+  }
+}
+
+function renderGrid() {
+  if (!S.filteredData.length && !S.data.length) { showState('no-data'); return; }
+  showState('grid');
+
+  const thead = $('sheet-head');
+  const tbody = $('sheet-body');
+  thead.innerHTML = '';
+  tbody.innerHTML = '';
+
+  // ── HEADER
+  // Row number
+  const thNum = document.createElement('th');
+  thNum.textContent = '#';
+  thNum.setAttribute('scope','col');
+  thNum.setAttribute('aria-label','Nomor baris');
+  thead.appendChild(thNum);
+
+  // ID col
+  const thId = document.createElement('th');
+  thId.setAttribute('scope','col');
+  thId.innerHTML = `<div class="col-header-inner"><span>Document ID</span></div>`;
+  thId.style.minWidth = '180px';
+  thead.appendChild(thId);
+
+  // Field cols
+  S.columns.forEach(col => {
+    const th = document.createElement('th');
+    th.setAttribute('scope','col');
+    th.innerHTML = `<div class="col-header-inner"><span>${escHtml(col)}</span><button class="del-col" aria-label="Hapus kolom ${escHtml(col)}" title="Hapus kolom dari tampilan">✕</button></div>`;
+    th.style.minWidth = '140px';
+    th.querySelector('.del-col').addEventListener('click', () => removeColumnFromView(col));
+    thead.appendChild(th);
+  });
+
+  // Actions col
+  const thAct = document.createElement('th');
+  thAct.className = 'actions-col';
+  thAct.setAttribute('scope','col');
+  thAct.textContent = 'Aksi';
+  thead.appendChild(thAct);
+
+  // ── BODY
+  S.filteredData.forEach((row, idx) => {
+    const tr = document.createElement('tr');
+    tr.dataset.id = row.id;
+    if (S.editingRows.has(row.id)) tr.classList.add('dirty');
+
+    // Row number
+    const tdNum = document.createElement('td');
+    tdNum.textContent = idx + 1;
+    tdNum.setAttribute('aria-label',`Baris ${idx+1}`);
+    tr.appendChild(tdNum);
+
+    // ID cell (readonly)
+    const tdId = document.createElement('td');
+    const dispId = document.createElement('span');
+    dispId.className = 'cell-display';
+    dispId.textContent = row.id;
+    dispId.title = row.id;
+    dispId.style.color = 'var(--text-3)';
+    dispId.style.fontSize = '11px';
+    tdId.appendChild(dispId);
+    tr.appendChild(tdId);
+
+    // Field cells
+    S.columns.forEach(col => {
+      const td = document.createElement('td');
+      const val = row[col];
+      if (S.editingRows.has(row.id)) {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.className = 'cell-input';
+        inp.value = val ?? '';
+        inp.dataset.col = col;
+        inp.dataset.docId = row.id;
+        inp.setAttribute('aria-label', `${col} untuk dokumen ${row.id}`);
+        inp.addEventListener('change', () => { /* mark dirty */ });
+        td.appendChild(inp);
+      } else {
+        const disp = document.createElement('span');
+        disp.className = 'cell-display' + (val == null ? ' null-val' : '');
+        disp.textContent = val == null ? 'null' : String(val);
+        disp.title = val == null ? 'null' : String(val);
+        disp.setAttribute('role','cell');
+        disp.addEventListener('dblclick', () => {
+          S.editingRows.add(row.id);
+          renderGrid();
+          // Focus the input for this cell
+          const inp = document.querySelector(`input[data-doc-id="${row.id}"][data-col="${col}"]`);
+          if (inp) inp.focus();
+        });
+        td.appendChild(disp);
+      }
+      tr.appendChild(td);
+    });
+
+    // Actions
+    const tdAct = document.createElement('td');
+    tdAct.className = 'actions-cell';
+    if (S.editingRows.has(row.id)) {
+      const btnSave = document.createElement('button');
+      btnSave.className = 'row-save';
+      btnSave.textContent = '💾 Simpan';
+      btnSave.setAttribute('aria-label', `Simpan perubahan dokumen ${row.id}`);
+      btnSave.addEventListener('click', async () => {
+        const newData = {};
+        // Collect all inputs in this row
+        const inputs = tr.querySelectorAll('.cell-input');
+        inputs.forEach(inp => { newData[inp.dataset.col] = inp.value; });
+        const ok = await updateDoc(row.id, newData);
+        if (ok) {
+          S.editingRows.delete(row.id);
+          renderGrid();
+        }
+      });
+
+      const btnCancel = document.createElement('button');
+      btnCancel.className = 'row-cancel';
+      btnCancel.textContent = '✕';
+      btnCancel.setAttribute('aria-label', `Batal edit dokumen ${row.id}`);
+      btnCancel.addEventListener('click', () => {
+        S.editingRows.delete(row.id);
+        renderGrid();
+      });
+
+      tdAct.appendChild(btnSave);
+      tdAct.appendChild(document.createTextNode(' '));
+      tdAct.appendChild(btnCancel);
+    } else {
+      const btnEdit = document.createElement('button');
+      btnEdit.className = 'row-edit';
+      btnEdit.textContent = '✎';
+      btnEdit.setAttribute('aria-label', `Edit dokumen ${row.id}`);
+      btnEdit.title = 'Edit baris';
+      btnEdit.addEventListener('click', () => {
+        S.editingRows.add(row.id);
+        renderGrid();
+      });
+
+      const btnDel = document.createElement('button');
+      btnDel.className = 'row-delete';
+      btnDel.textContent = '🗑';
+      btnDel.setAttribute('aria-label', `Hapus dokumen ${row.id}`);
+      btnDel.title = 'Hapus dokumen';
+      btnDel.addEventListener('click', () => deleteDoc(row.id));
+
+      tdAct.appendChild(btnEdit);
+      tdAct.appendChild(document.createTextNode(' '));
+      tdAct.appendChild(btnDel);
+    }
+    tr.appendChild(tdAct);
+    tbody.appendChild(tr);
+  });
+
+  // No results from filter
+  if (!S.filteredData.length && S.data.length) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = S.columns.length + 3;
+    td.style.cssText = 'text-align:center;padding:32px;color:var(--text-3);font-style:italic;';
+    td.textContent = 'Tidak ada hasil pencarian.';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  }
+}
+
+function removeColumnFromView(col) {
+  S.columns = S.columns.filter(c => c !== col);
+  renderGrid();
+  toast(`Kolom "${col}" disembunyikan (data tidak terhapus)`, 'info');
+}
+
+/* ================================================================
+   ADD ROW UI
+   ================================================================ */
+function showAddRowBar() {
+  S.addingRow = true;
+  S.newRowData = {};
+  const bar = $('new-row-fields');
+  bar.innerHTML = '';
+  S.columns.forEach(col => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;gap:2px;min-width:120px;';
+    const lbl = document.createElement('label');
+    lbl.textContent = col;
+    lbl.htmlFor = `nrf-${col}`;
+    lbl.style.cssText = 'font-size:10px;color:var(--text-3);margin:0;';
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.id = `nrf-${col}`;
+    inp.placeholder = col;
+    inp.dataset.col = col;
+    inp.setAttribute('aria-label', `Nilai untuk ${col}`);
+    inp.addEventListener('input', () => { S.newRowData[col] = inp.value; });
+    wrap.appendChild(lbl);
+    wrap.appendChild(inp);
+    bar.appendChild(wrap);
+  });
+  // Custom field input
+  const wrapCustom = document.createElement('div');
+  wrapCustom.style.cssText = 'display:flex;flex-direction:column;gap:2px;min-width:120px;';
+  const lblC = document.createElement('label');
+  lblC.textContent = '+ Field Baru';
+  lblC.style.cssText = 'font-size:10px;color:var(--text-3);margin:0;';
+  const inpC = document.createElement('input');
+  inpC.type = 'text';
+  inpC.placeholder = 'field:nilai';
+  inpC.setAttribute('aria-label', 'Field dan nilai baru, format field:nilai');
+  inpC.title = 'Format: namaField:nilai';
+  inpC.addEventListener('input', () => {
+    const [k,...vs] = inpC.value.split(':');
+    if (k && vs.length) S.newRowData[k.trim()] = vs.join(':').trim();
+  });
+  wrapCustom.appendChild(lblC);
+  wrapCustom.appendChild(inpC);
+  bar.appendChild(wrapCustom);
+
+  $('add-row-bar').style.display = 'flex';
+  // Focus first input
+  const first = bar.querySelector('input');
+  if (first) first.focus();
+}
+
+function hideAddRowBar() {
+  S.addingRow = false;
+  $('add-row-bar').style.display = 'none';
+}
+
+/* ================================================================
+   COLUMN MANAGER MODAL
+   ================================================================ */
+function openColModal() {
+  const chips = $('col-chips');
+  chips.innerHTML = '';
+  S.columns.forEach(col => {
+    const chip = document.createElement('span');
+    chip.className = 'col-chip';
+    chip.innerHTML = `<span>${escHtml(col)}</span><button aria-label="Hapus kolom ${escHtml(col)} dari tampilan" title="Sembunyikan kolom">✕</button>`;
+    chip.querySelector('button').addEventListener('click', () => {
+      removeColumnFromView(col);
+      openColModal(); // refresh
+    });
+    chips.appendChild(chip);
+  });
+  $('col-modal-overlay').style.display = 'flex';
+  $('new-col-input').focus();
+}
+
+/* ================================================================
+   EXPORT CSV
+   ================================================================ */
+function exportCSV() {
+  const cols = ['id', ...S.columns];
+  const rows = [cols.join(',')];
+  S.filteredData.forEach(row => {
+    rows.push(cols.map(c => {
+      const v = String(row[c] ?? '').replace(/"/g,'""');
+      return /[,"\n]/.test(v) ? `"${v}"` : v;
+    }).join(','));
+  });
+  const blob = new Blob([rows.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${S.activeCollection || 'export'}_${Date.now()}.csv`;
+  a.click();
+  toast(`Ekspor ${S.filteredData.length} baris berhasil`, 'success');
+}
+
+/* ================================================================
+   CONFIG MODAL
+   ================================================================ */
+function openConfigModal() {
+  const cfg = S.config || loadConfig() || {};
+  const fields = ['apiKey','authDomain','projectId','storageBucket','messagingSenderId','appId'];
+  fields.forEach(f => { const el = $(`cfg-${f}`); if(el) el.value = cfg[f]||''; });
+  $('modal-overlay').classList.add('open');
+  setTimeout(() => $('cfg-projectId').focus(), 50);
+}
+function closeConfigModal() { $('modal-overlay').classList.remove('open'); }
+
+function saveConfigModal() {
+  const cfg = {};
+  ['apiKey','authDomain','projectId','storageBucket','messagingSenderId','appId']
+    .forEach(f => { const el=$(`cfg-${f}`); if(el) cfg[f] = el.value.trim(); });
+  if (!cfg.projectId) { toast('Project ID wajib diisi', 'warning'); return; }
+  closeConfigModal();
+  initFirebase(cfg);
+}
+
+/* ================================================================
+   EVENT LISTENERS
+   ================================================================ */
+// Config modal
+$('btn-config').addEventListener('click', openConfigModal);
+$('btn-modal-cancel').addEventListener('click', closeConfigModal);
+$('btn-modal-save').addEventListener('click', saveConfigModal);
+$('modal-overlay').addEventListener('click', e => { if(e.target===$('modal-overlay')) closeConfigModal(); });
+
+// Parse JSON config
+$('btn-parse-json').addEventListener('click', () => {
+  try {
+    const cfg = JSON.parse($('cfg-json').value);
+    ['apiKey','authDomain','projectId','storageBucket','messagingSenderId','appId']
+      .forEach(f => { const el=$(`cfg-${f}`); if(el && cfg[f]) el.value = cfg[f]; });
+    toast('JSON berhasil di-parse', 'success');
+  } catch(e) {
+    toast('JSON tidak valid', 'error');
+  }
+});
+
+// Sidebar toggle
+$('btn-toggle-sidebar').addEventListener('click', () => {
+  $('sidebar').classList.toggle('collapsed');
+});
+
+// Add collection
+$('btn-add-coll').addEventListener('click', () => addCollection($('new-coll-input').value));
+$('new-coll-input').addEventListener('keydown', e => { if(e.key==='Enter') addCollection($('new-coll-input').value); });
+
+// Add record
+$('btn-add-record').addEventListener('click', () => {
+  S.addingRow ? hideAddRowBar() : showAddRowBar();
+});
+$('btn-save-new').addEventListener('click', async () => {
+  if (!Object.keys(S.newRowData).length) { toast('Isi minimal satu field', 'warning'); return; }
+  const ok = await addDoc(S.newRowData);
+  if (ok) hideAddRowBar();
+});
+$('btn-cancel-new').addEventListener('click', hideAddRowBar);
+
+// Manage columns
+$('btn-manage-cols').addEventListener('click', openColModal);
+$('btn-col-modal-close').addEventListener('click', () => { $('col-modal-overlay').style.display='none'; });
+$('col-modal-overlay').addEventListener('click', e => { if(e.target===$('col-modal-overlay')) $('col-modal-overlay').style.display='none'; });
+$('btn-add-col').addEventListener('click', () => {
+  const v = $('new-col-input').value.trim();
+  if (!v) { toast('Nama kolom kosong', 'warning'); return; }
+  if (S.columns.includes(v)) { toast('Kolom sudah ada', 'warning'); return; }
+  S.columns.push(v);
+  $('new-col-input').value = '';
+  renderGrid();
+  openColModal();
+  toast(`Kolom "${v}" ditambahkan ke tampilan`, 'info');
+});
+$('new-col-input').addEventListener('keydown', e => { if(e.key==='Enter') $('btn-add-col').click(); });
+
+// Refresh
+$('btn-refresh').addEventListener('click', () => {
+  if (S.activeCollection) loadCollection(S.activeCollection);
+});
+
+// Realtime toggle
+$('realtime-toggle').addEventListener('change', () => {
+  if (S.activeCollection) loadCollection(S.activeCollection);
+});
+
+// Search
+let searchTimer;
+$('search-input').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(applyFilter, 200);
+});
+
+// Export CSV
+$('btn-export-csv').addEventListener('click', exportCSV);
+
+// Keyboard: Escape closes modals
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeConfigModal();
+    $('col-modal-overlay').style.display = 'none';
+    $('confirm-overlay').classList.remove('open');
+  }
+});
+
+/* ================================================================
+   BOOT
+   ================================================================ */
+(function boot() {
+  // Load saved collections
+  S.collections = loadColls();
+  renderCollList();
+
+  // Auto-connect if config exists
+  const savedCfg = loadConfig();
+  if (savedCfg && savedCfg.projectId) {
+    setStatus('', 'Menghubungkan…');
+    initFirebase(savedCfg);
+  } else {
+    showState('empty');
+    // Auto-open config modal on first use
+    setTimeout(openConfigModal, 400);
+  }
+})();
+</script>
+</body>
+</html>
